@@ -132,10 +132,17 @@ function appendTempUserRegionFilter(
     where.push(
       `LOWER(TRIM(COALESCE(u.region, ''))) = ANY($${params.length}::text[])`
     );
-  } else {
-    // "all" path for temp tables only (Alphaa comes from legacy).
+  } else if (filters.region !== "all" && filters.region !== "Alphaa") {
+    // A project created in Strategy: people saved with its name.
+    params.push(filters.region.trim());
     where.push(
-      `LOWER(TRIM(COALESCE(u.region, ''))) IN ('africa', 'europe', 'balkan', 'asia')`
+      `LOWER(TRIM(COALESCE(u.region, ''))) = LOWER($${params.length})`
+    );
+  } else {
+    // "all" path for temp tables only (Alphaa comes from legacy): every project
+    // except Main, including projects created in Strategy.
+    where.push(
+      `LOWER(TRIM(COALESCE(u.region, ''))) NOT IN ('', 'alphaa', 'main')`
     );
   }
 }
@@ -320,11 +327,8 @@ async function fetchTempAdminExtract(
 export async function fetchAdminExtract(
   filters: AdminExtractFilters
 ): Promise<AdminExtractResult> {
-  const includeTemp =
-    filters.region === "all" ||
-    filters.region === "Africa" ||
-    filters.region === "Europe" ||
-    filters.region === "Asia";
+  // Every project except Main lives in the temp tables.
+  const includeTemp = filters.region !== "Alphaa";
   const includeAlphaa =
     filters.region === "all" || filters.region === "Alphaa";
   const tempCountries = countriesForExtractSource(filters.countries, "temp");

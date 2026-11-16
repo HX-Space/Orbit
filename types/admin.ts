@@ -10,7 +10,8 @@ export type AdminEmployeeListFilters = {
   q?: string;
   status?: EmployeeListStatusFilter;
   role?: "all" | "employee" | "manager" | "team_lead" | "op" | "hoo" | "admin";
-  region?: "Africa" | "Europe" | "Alphaa" | "Asia";
+  /** Built-in project key or a Strategy project name (temp_users.region). */
+  region?: string;
   country?: string;
   teamLeadId?: number | null;
 };
@@ -26,7 +27,8 @@ export type AdminEmployeeSource = "temp" | "alphaa";
 
 export type MainProjectLabel = typeof MAIN_PROJECT_LABEL;
 
-export type AdminEmployeeProjectLabel = "Africa" | "Europe" | "Asia" | MainProjectLabel;
+/** Built-in project label, or the name of a project created in Strategy. */
+export type AdminEmployeeProjectLabel = string;
 
 export type AdminEmployeeListRow = {
   id: number;
@@ -61,6 +63,8 @@ export type AdminEmployeeListRow = {
 export type EmployeeCreateProjectOption = {
   slug: string;
   name: string;
+  /** Value saved in temp_users.region for people in this project. */
+  region: string;
   countries: string[];
 };
 
@@ -767,7 +771,8 @@ export type EmployeesTableProps = {
 
 /** A project + country that has accounts (Employees filter dropdowns). */
 export type EmployeeFilterCountry = {
-  region: "Africa" | "Europe" | "Alphaa" | "Asia";
+  /** temp_users.region (built-in key or Strategy project name). */
+  region: string;
   country: string;
 };
 
@@ -777,10 +782,12 @@ export type EmployeesTableToolbarProps = {
   holders: BulkImportHolderOption[];
   canCreateEmployees?: boolean;
   filterCountries: EmployeeFilterCountry[];
+  projects: EmployeeCreateProjectOption[];
 };
 
 export type EmployeesToolbarFiltersProps = {
   filterCountries: EmployeeFilterCountry[];
+  projects: EmployeeCreateProjectOption[];
 };
 
 export type EmployeesHeadingActionsProps = {
@@ -1339,7 +1346,16 @@ export type AdminExtractRegionFilter =
   | "Africa"
   | "Europe"
   | "Alphaa"
-  | "Asia";
+  | "Asia"
+  /** A project created in Strategy (its temp_users.region value). */
+  | (string & {});
+
+/** A project created in Strategy, as the Extract filters see it. */
+export type ExtractProjectOption = {
+  region: string;
+  name: string;
+  countries: string[];
+};
 
 export type AdminExtractSpareFilter = "exclude" | "include" | "only";
 
@@ -1413,6 +1429,7 @@ export type AdminExtractResult = {
 
 export type ExtractToolProps = {
   countries: string[];
+  projects: ExtractProjectOption[];
 };
 
 export type ExtractPlatformChip = {
@@ -1424,6 +1441,7 @@ export type ExtractPlatformChip = {
 export type ExtractFiltersProps = {
   value: AdminExtractFilters;
   countries: string[];
+  projects: ExtractProjectOption[];
   onChange: (next: AdminExtractFilters) => void;
   actions?: ReactNode;
 };

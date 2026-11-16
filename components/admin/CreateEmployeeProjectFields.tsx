@@ -32,7 +32,7 @@ export function CreateEmployeeProjectFields({
   onCountryChange,
 }: Props) {
   const assignedRegion = projectSlug
-    ? regionDisplayLabel(regionFromStrategyProjectSlug(projectSlug))
+    ? regionDisplayLabel(regionFromStrategyProjectSlug(projectSlug, projects))
     : "";
 
   return (

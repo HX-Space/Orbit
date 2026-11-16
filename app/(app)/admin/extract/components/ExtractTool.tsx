@@ -13,7 +13,7 @@ import { ExtractFilters } from "./ExtractFilters";
 import { ExtractPreviewTable } from "./ExtractPreviewTable";
 import { ExtractSummary } from "./ExtractSummary";
 
-export function ExtractTool({ countries }: ExtractToolProps) {
+export function ExtractTool({ countries, projects }: ExtractToolProps) {
   const [filters, setFilters] = useState<AdminExtractFilters>(
     emptyAdminExtractFilters()
   );
@@ -44,6 +44,7 @@ export function ExtractTool({ countries }: ExtractToolProps) {
       <ExtractFilters
         value={filters}
         countries={countries}
+        projects={projects}
         onChange={setFilters}
         actions={
           <div className="flex flex-wrap items-center gap-2">

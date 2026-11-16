@@ -133,6 +133,10 @@ export async function fetchAdminEmployeesList(
   } else if (region === "Alphaa") {
     params.push(["Alphaa"]);
     where.push(`u.region = ANY($${params.length}::text[])`);
+  } else if (region?.trim()) {
+    // A project created in Strategy: people saved with its name.
+    params.push(region.trim());
+    where.push(`LOWER(TRIM(COALESCE(u.region, ''))) = LOWER($${params.length})`);
   }
   if (country) {
     params.push(country);

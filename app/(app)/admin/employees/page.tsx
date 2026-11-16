@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireAdminPageAccess, viewerAllows } from "@/lib/admin-access";
 import { fetchAdminEmployeesList } from "@/lib/admin-data";
+import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
 import {
   employeeListStatusCounts,
   filterEmployeesByListStatus,
@@ -50,12 +51,14 @@ export default async function AdminEmployeesPage({
       ? roleRaw
       : "all";
 
+  const projects = await fetchEmployeeCreateProjectOptions();
   const regionFilter = employeeListRegionFromSlug(
-    typeof sp.region === "string" ? sp.region : undefined
+    typeof sp.region === "string" ? sp.region : undefined,
+    projects
   );
   let region = regionFilter === "all" ? undefined : regionFilter;
   const countryRaw = typeof sp.country === "string" ? sp.country : "";
-  let country = isCountryInEmployeeListRegion(countryRaw, regionFilter)
+  let country = isCountryInEmployeeListRegion(countryRaw, regionFilter, projects)
     ? countryRaw
     : "";
 
@@ -144,6 +147,7 @@ export default async function AdminEmployeesPage({
             holders={holders}
             canCreateEmployees={canCreateEmployees}
             filterCountries={filterCountries}
+            projects={projects}
           />
         }
       />

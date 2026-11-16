@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireAdminPageAccess } from "@/lib/admin-access";
-import { ALL_SETUP_COUNTRIES } from "@/lib/setup-options";
+import { ALL_SETUP_COUNTRIES, isBuiltInSetupRegion } from "@/lib/setup-options";
+import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
 import { AdminWorkspace } from "@/components/admin/AdminWorkspace";
 import { adminViewExtract } from "@/lib/admin-view";
 import { ExtractTool } from "./components/ExtractTool";
@@ -12,14 +13,25 @@ export const metadata: Metadata = {
 export default async function AdminExtractPage() {
   const viewer = await requireAdminPageAccess("extract");
 
-  const countries =
-    viewer.role === "op" && viewer.scope
-      ? viewer.scope.countries
-      : [...ALL_SETUP_COUNTRIES];
+  // Projects created in Strategy (built-in ones are already in the filter).
+  const scope = viewer.role === "op" ? viewer.scope : null;
+  const projects = (await fetchEmployeeCreateProjectOptions())
+    .filter((project) => !isBuiltInSetupRegion(project.region))
+    .filter((project) => !scope || project.region === scope.region)
+    .map(({ region, name, countries }) => ({ region, name, countries }));
+
+  const countries = scope
+    ? scope.countries
+    : [
+        ...new Set([
+          ...ALL_SETUP_COUNTRIES,
+          ...projects.flatMap((project) => project.countries),
+        ]),
+      ];
 
   return (
     <AdminWorkspace view={adminViewExtract()}>
-      <ExtractTool countries={countries} />
+      <ExtractTool countries={countries} projects={projects} />
     </AdminWorkspace>
   );
 }

@@ -12,6 +12,7 @@ import {
   setupCountriesForRegion,
   setupRegionForCountry,
   setupRegionsForCountry,
+  isBuiltInSetupRegion,
   toggleManagerCountryInGroup,
   type SetupRegion,
 } from "@/lib/setup-options";
@@ -128,14 +129,17 @@ export function EmployeeForm({
   const projectCountries = useMemo(
     () =>
       form.region
-        ? [...setupCountriesForRegion(form.region as SetupRegion)]
+        ? [...setupCountriesForRegion(form.region as SetupRegion, projects)]
         : [],
-    [form.region]
+    [form.region, projects]
   );
 
   function changeRegion(region: string) {
     setForm((f) => {
-      const allowed = setupCountriesForRegion(region as SetupRegion) as readonly string[];
+      const allowed = setupCountriesForRegion(
+        region as SetupRegion,
+        projects
+      ) as readonly string[];
       const moved = region !== f.region;
       return {
         ...f,
@@ -150,7 +154,7 @@ export function EmployeeForm({
 
   function changeCountry(country: string) {
     setForm((f) => {
-      const regions = setupRegionsForCountry(country);
+      const regions = setupRegionsForCountry(country, projects);
       const region = regions.some((r) => r === f.region)
         ? f.region
         : regions[0] ?? setupRegionForCountry(country);
@@ -180,7 +184,8 @@ export function EmployeeForm({
         f.manager_countries,
         f.region,
         option,
-        groupRegion
+        groupRegion,
+        projects
       );
       return { ...f, manager_countries: next.countries, region: next.region };
     });
@@ -401,6 +406,13 @@ export function EmployeeForm({
                   {regionDisplayLabel(region)}
                 </option>
               ))}
+              {projects
+                .filter((project) => !isBuiltInSetupRegion(project.region))
+                .map((project) => (
+                  <option key={project.slug} value={project.region}>
+                    {project.name}
+                  </option>
+                ))}
             </select>
           </label>
         ) : null}

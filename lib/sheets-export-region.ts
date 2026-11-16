@@ -1,7 +1,7 @@
-import { setupRegionForCountry, type SetupRegion } from "@/lib/setup-options";
+import { setupRegionForCountry } from "@/lib/setup-options";
 import type { SheetsExportAccountRow } from "@/types/admin";
 
-export type SheetsExportRegion = SetupRegion;
+export type SheetsExportRegion = "Africa" | "Europe" | "Alphaa" | "Asia";
 
 export function resolveSheetsExportRegion(
   account: Pick<SheetsExportAccountRow, "region" | "country">

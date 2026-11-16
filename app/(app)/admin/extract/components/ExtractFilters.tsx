@@ -44,10 +44,11 @@ function toggleValue<T extends string>(list: T[], value: T): T[] {
 export function ExtractFilters({
   value,
   countries,
+  projects,
   onChange,
   actions,
 }: ExtractFiltersProps) {
-  const countryOptions = extractCountryOptions(value.region).filter(
+  const countryOptions = extractCountryOptions(value.region, projects).filter(
     (country) =>
       countries.length === 0 ||
       countries.includes(baseCountryFromDisplay(country))
@@ -61,7 +62,7 @@ export function ExtractFilters({
   }
 
   function setRegion(region: AdminExtractRegionFilter) {
-    const allowedCountries = new Set(extractCountryOptions(region));
+    const allowedCountries = new Set(extractCountryOptions(region, projects));
     const allowedPlatforms = new Set<string>(
       region === "all" || region === "Alphaa"
         ? [...EXTRACT_CORE_PLATFORMS, ...EXTRACT_ALPHAA_EXTRA_PLATFORMS]
@@ -100,6 +101,11 @@ export function ExtractFilters({
             <option value="Europe">Europe</option>
             <option value="Alphaa">{MAIN_PROJECT_LABEL}</option>
             <option value="Asia">Asia</option>
+            {projects.map((project) => (
+              <option key={project.region} value={project.region}>
+                {project.name}
+              </option>
+            ))}
           </select>
         </label>
 

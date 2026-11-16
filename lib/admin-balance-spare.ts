@@ -1,3 +1,4 @@
+import { regionForProjectSlug } from "@/lib/employee-create-projects-data";
 import { extractPlatformLabel } from "@/lib/admin-extract-platform";
 import {
   ALPHAA_EXTRA_PLATFORM_KEYS,
@@ -205,8 +206,17 @@ async function fetchTempBalanceAccounts(
     return { accounts: [], seats: new Map() };
   }
 
-  const regionClause =
-    region === "Africa"
+  // Asia or a project created in Strategy: only the people saved in that project.
+  const customRegion =
+    region === "Africa" ||
+    region === "Europe" ||
+    region === "Overview" ||
+    region === "Alphaa"
+      ? ""
+      : (await regionForProjectSlug(region)) || region;
+  const regionClause = customRegion
+    ? ` AND LOWER(TRIM(u.region)) = LOWER($2)`
+    : region === "Africa"
       ? ` AND LOWER(TRIM(u.region)) = 'africa'`
       : region === "Europe"
         ? ` AND LOWER(TRIM(u.region)) IN ('europe', 'balkan')`
@@ -234,7 +244,7 @@ async function fetchTempBalanceAccounts(
         ${regionClause}
         AND ${TEMP_USER_COUNTRY} = ANY($1::text[])
       ORDER BY a.id ASC`,
-    [countries]
+    customRegion ? [countries, customRegion] : [countries]
   );
 
   const seats = new Map<number, AdminCountrySeatQuota>();
