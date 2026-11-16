@@ -3,6 +3,8 @@
 import { requirePagePermission, type AdminViewer } from "@/lib/admin-access";
 import { baseCountryFromDisplay } from "@/lib/overview-country-display";
 import { fetchAdminExtract } from "@/lib/admin-extract-data";
+import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
+import { isBuiltInSetupRegion } from "@/lib/setup-options";
 import { isExtractPlatform } from "@/lib/admin-extract-platform";
 import {
   isExtractCountryFilter,
@@ -18,12 +20,16 @@ import type {
   AdminExtractRegionFilter,
 } from "@/types/admin";
 
-function normalizeFilters(input: AdminExtractFilters): AdminExtractFilters {
+function normalizeFilters(
+  input: AdminExtractFilters,
+  projectRegions: string[]
+): AdminExtractFilters {
   const region: AdminExtractRegionFilter =
     input.region === "Africa" ||
     input.region === "Europe" ||
     input.region === "Alphaa" ||
-    input.region === "Asia"
+    input.region === "Asia" ||
+    projectRegions.includes(input.region)
       ? input.region
       : "all";
   const platforms = (input.platforms ?? []).filter((platform) =>
@@ -88,7 +94,13 @@ export async function runAdminExtract(
 ): Promise<AdminExtractResult | { error: string }> {
   try {
     const viewer = await requirePagePermission("extract", "canRead");
-    const filters = scopeFiltersForViewer(normalizeFilters(input), viewer);
+    const projectRegions = (await fetchEmployeeCreateProjectOptions())
+      .map((project) => project.region)
+      .filter((region) => !isBuiltInSetupRegion(region));
+    const filters = scopeFiltersForViewer(
+      normalizeFilters(input, projectRegions),
+      viewer
+    );
     if (!filters) {
       return {
         rows: [],

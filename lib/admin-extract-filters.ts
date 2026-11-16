@@ -80,8 +80,11 @@ function labelAsiaCountry(country: string): string {
 }
 
 export function extractCountryOptions(
-  region: AdminExtractRegionFilter
+  region: AdminExtractRegionFilter,
+  projects: readonly { region: string; countries: readonly string[] }[] = []
 ): string[] {
+  const custom = projects.find((project) => project.region === region);
+  if (custom) return [...custom.countries];
   if (region === "Europe") return [...EUROPE_SETUP_COUNTRIES];
   if (region === "Africa") {
     return SETUP_COUNTRIES.map((country) =>

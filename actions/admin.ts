@@ -121,7 +121,7 @@ const createEmployeeSchema = z
     current_level: z.number().int().min(1).max(6).optional(),
     country: z.string().optional(),
     project_slug: z.string().trim().optional(),
-    region: z.enum(["Africa", "Europe", "Alphaa", "Asia"]).optional(),
+    region: z.string().trim().max(120).optional(),
   })
   .superRefine((data, ctx) => {
     const role = data.role ?? "employee";
@@ -245,13 +245,16 @@ export async function createEmployee(
           ? opCountries[0]!
           : (p.country ?? "").trim();
 
-    let assignedRegion = setupRegionForCountry(primaryCountry);
+    let assignedRegion: string = setupRegionForCountry(primaryCountry);
     let opProjectSlug: string | null = null;
     // Country Manager: keep the project picked for a country that is in two projects.
+    const projectList = await fetchEmployeeCreateProjectOptions();
     if (
       role === "manager" &&
       p.region &&
-      managerCountries.some((c) => setupRegionsForCountry(c).includes(p.region!))
+      managerCountries.some((c) =>
+        setupRegionsForCountry(c, projectList).includes(p.region!)
+      )
     ) {
       assignedRegion = p.region;
     }
@@ -269,7 +272,7 @@ export async function createEmployee(
       ) {
         return { error: "Select countries from this project only." };
       }
-      assignedRegion = regionFromStrategyProjectSlug(projectSlug);
+      assignedRegion = regionFromStrategyProjectSlug(projectSlug, projects);
       opProjectSlug = projectSlug;
     } else if (role !== "manager" && role !== "admin" && role !== "hoo") {
       const projects = await fetchEmployeeCreateProjectOptions();
@@ -281,7 +284,7 @@ export async function createEmployee(
       if (!projectCountries.includes(primaryCountry)) {
         return { error: "Select a country from this project." };
       }
-      assignedRegion = regionFromStrategyProjectSlug(projectSlug);
+      assignedRegion = regionFromStrategyProjectSlug(projectSlug, projects);
     }
 
     client = await pool.connect();
@@ -436,7 +439,7 @@ const updateProfileSchema = z
     project_slug: z.string().trim().optional(),
     op_countries: z.array(z.string()).optional(),
     country: z.string().trim(),
-    region: z.enum(["Africa", "Europe", "Alphaa", "Asia"]).optional(),
+    region: z.string().trim().max(120).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.role === "manager" || data.role === "admin" || data.role === "hoo") {
@@ -498,7 +501,7 @@ export async function updateEmployeeProfile(
   }
 
   const projectSlug = (p.project_slug ?? "").trim();
-  let assignedRegion =
+  let assignedRegion: string =
     p.role === "manager"
       ? setupRegionForCountry(managerCountries[0]!)
       : setupRegionForCountry(p.country);
@@ -519,7 +522,7 @@ export async function updateEmployeeProfile(
     ) {
       throw new Error("Select countries from this project only.");
     }
-    assignedRegion = regionFromStrategyProjectSlug(projectSlug);
+    assignedRegion = regionFromStrategyProjectSlug(projectSlug, projects);
     primaryCountry = opCountries[0]!;
     opProjectSlug = projectSlug;
   }
@@ -540,11 +543,12 @@ export async function updateEmployeeProfile(
     // 1) the project picked in the form wins, 2) else the person keeps their
     // current project if their country is in it, 3) else guess from the country.
     if (p.role !== "op") {
+      const projectList = await fetchEmployeeCreateProjectOptions();
       const countriesForProject =
         p.role === "manager" ? managerCountries : [primaryCountry];
       const fits = (region: string) =>
         countriesForProject.some((c) =>
-          setupRegionsForCountry(c).some((r) => r === region)
+          setupRegionsForCountry(c, projectList).some((r) => r === region)
         );
       const current = await client.query<{ region: string | null }>(
         `SELECT region FROM temp_users WHERE id = $1`,

@@ -1,5 +1,5 @@
 import { query, queryOne } from "@/lib/db";
-import { regionFromStrategyProjectSlug } from "@/lib/employee-create-projects";
+import { regionForProjectSlug } from "@/lib/employee-create-projects-data";
 import type { OpAccessScope } from "@/types/admin";
 
 export async function fetchOpAccessScope(
@@ -28,7 +28,7 @@ export async function fetchOpAccessScope(
 
   return {
     projectSlug,
-    region: regionFromStrategyProjectSlug(projectSlug),
+    region: (await regionForProjectSlug(projectSlug)) || projectSlug,
     countries: countries.map((row) => row.country.trim()).filter(Boolean),
   };
 }

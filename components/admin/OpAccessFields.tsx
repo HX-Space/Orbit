@@ -20,7 +20,7 @@ export function OpAccessFields({
 }: OpAccessFieldsProps) {
   const projectCountries = countriesForCreateProject(projects, projectSlug);
   const regionLabel = projectSlug
-    ? regionDisplayLabel(regionFromStrategyProjectSlug(projectSlug))
+    ? regionDisplayLabel(regionFromStrategyProjectSlug(projectSlug, projects))
     : "";
 
   return (

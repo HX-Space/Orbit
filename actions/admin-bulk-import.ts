@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import { auth } from "@/auth";
 import { requirePagePermission } from "@/lib/admin-access";
 import { sameProject } from "@/lib/project-region-sql";
+import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
 import { baseCountryFromDisplay } from "@/lib/overview-country-display";
 import { pool, queryOne } from "@/lib/db";
 import { publicAdminMutationError } from "@/lib/admin-action-error";
@@ -196,9 +197,10 @@ async function importTempHolderAccounts(input: {
   // Keep the holder's project when the country is in it. Sudan / Somalia (Africa +
   // Main) and Palestine (Main + Asia) would otherwise be re-guessed and move them.
   const currentRegion = employee.region?.trim() ?? "";
+  const projectList = await fetchEmployeeCreateProjectOptions();
   const region =
     currentRegion &&
-    setupRegionsForCountry(input.country).some((r) => r === currentRegion)
+    setupRegionsForCountry(input.country, projectList).some((r) => r === currentRegion)
       ? currentRegion
       : setupRegionForCountry(input.country);
 

@@ -23,7 +23,10 @@ import {
   resolveOverviewActualKey,
 } from "@/lib/overview-country-display";
 import { MAIN_PROJECT_LABEL } from "@/lib/project-labels";
-import { regionFromStrategyProjectSlug } from "@/lib/employee-create-projects";
+import {
+  fetchEmployeeCreateProjectOptions,
+  regionForProjectSlug,
+} from "@/lib/employee-create-projects-data";
 import {
   baseCountriesFromDisplayFilter,
   isDualRegionCountry,
@@ -33,7 +36,7 @@ import {
   adminCountryPlansForRegion,
   adminPlanCountriesForRegion,
 } from "@/lib/strategy-plans-data";
-import { isAlphaaCountry, isTempPlanCountry } from "@/lib/setup-options";
+import { isAlphaaCountry, isEuropeCountry, isTempPlanCountry } from "@/lib/setup-options";
 import {
   fetchTempCountryCoverage,
   type TempCountryActuals,
@@ -457,7 +460,8 @@ async function splitCoverageCountries(
       tempCountries: projectCountries,
       alphaaCountries: [] as string[],
       tempRegionScope: undefined,
-      projectRegion: regionFromStrategyProjectSlug(region),
+      // Unknown project: use its slug, which matches nobody (never Africa).
+      projectRegion: (await regionForProjectSlug(region)) || region,
       fetchTemp: projectCountries.length > 0,
       fetchAlphaa: false,
     };
@@ -513,6 +517,24 @@ export async function fetchAdminCountryCoverage(
     fetchTemp,
     fetchAlphaa,
   } = await splitCoverageCountries(countryFilter, filter?.region);
+
+  // All regions tab: projects created in Strategy (Asia, Africa 2, ...) count
+  // only the people saved in that project.
+  const customProjects =
+    filter?.region === "Overview"
+      ? (await fetchEmployeeCreateProjectOptions()).filter(
+          (project) =>
+            !["africa", "europe", "alphaa"].includes(project.slug) &&
+            project.countries.length > 0
+        )
+      : [];
+  const customCoverage = await Promise.all(
+    customProjects.map((project) =>
+      fetchTempCountryCoverage(project.countries, {
+        projectRegion: project.region,
+      })
+    )
+  );
 
   // Main tab only: personal / umbrella split per platform.
   const wantScopes = filter?.region === "Alphaa" && fetchAlphaa;
@@ -570,18 +592,37 @@ export async function fetchAdminCountryCoverage(
       countryFilter ??
       [];
 
+    // Africa + Europe people: their own project's row when a country is listed twice.
+    const tempLabel = (country: string) =>
+      isEuropeCountry(country) ? "Europe" : "Africa";
     for (const [country, actuals] of tempCoverage.actualByCountry) {
       actualByCountry.set(
-        resolveOverviewActualKey(overviewDisplayNames, country, "Africa"),
+        resolveOverviewActualKey(overviewDisplayNames, country, tempLabel(country)),
         actuals
       );
     }
     for (const [country, holders] of tempCoverage.holdersByCountry) {
       holdersByCountry.set(
-        resolveOverviewActualKey(overviewDisplayNames, country, "Africa"),
+        resolveOverviewActualKey(overviewDisplayNames, country, tempLabel(country)),
         holders
       );
     }
+    customProjects.forEach((project, index) => {
+      const coverage = customCoverage[index]!;
+      const keyFor = (country: string) =>
+        resolveOverviewActualKey(overviewDisplayNames, country, project.name);
+      for (const [country, actuals] of coverage.actualByCountry) {
+        const key = keyFor(country);
+        // Never overwrite another project's row with this project's numbers.
+        if (actualByCountry.has(key) && !key.endsWith(`(${project.name})`)) continue;
+        actualByCountry.set(key, actuals);
+      }
+      for (const [country, holders] of coverage.holdersByCountry) {
+        const key = keyFor(country);
+        if (holdersByCountry.has(key) && !key.endsWith(`(${project.name})`)) continue;
+        holdersByCountry.set(key, holders);
+      }
+    });
     for (const [country, actuals] of alphaaActualByCountry) {
       const key = resolveOverviewActualKey(
         overviewDisplayNames,
@@ -719,7 +760,12 @@ export async function fetchAdminCountryCoverage(
   return {
     rows: coverageRows,
     totals,
-    onHoldCount: tempCoverage.onHoldCount,
-    spareCount: tempCoverage.spareCount + alphaaSpareCount,
+    onHoldCount:
+      tempCoverage.onHoldCount +
+      customCoverage.reduce((sum, coverage) => sum + coverage.onHoldCount, 0),
+    spareCount:
+      tempCoverage.spareCount +
+      alphaaSpareCount +
+      customCoverage.reduce((sum, coverage) => sum + coverage.spareCount, 0),
   };
 }

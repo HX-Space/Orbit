@@ -8,7 +8,6 @@ import {
   type SetupRegion,
 } from "@/lib/setup-options";
 import { normalizeProjectRegion } from "@/lib/admin-view";
-import { regionFromStrategyProjectSlug } from "@/lib/employee-create-projects";
 import type { ManagerCountriesFieldProps } from "@/types/admin";
 import { AdminFieldError } from "@/components/admin/AdminFieldError";
 
@@ -55,7 +54,7 @@ export function ManagerCountriesField({
       ? projects.map((project) => ({
           key: project.slug,
           label: project.name,
-          region: regionFromStrategyProjectSlug(project.slug) as string,
+          region: project.region,
           countries: project.countries,
         }))
       : REGION_GROUPS.map(({ region: groupRegion, countries }) => ({

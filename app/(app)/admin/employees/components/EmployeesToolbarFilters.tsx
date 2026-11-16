@@ -6,6 +6,7 @@ import { EmployeesToolbarSelect } from "@/app/(app)/admin/employees/components/E
 import {
   employeeListRegionFromSlug,
   employeeListRegionSlug,
+  isBuiltInSetupRegion,
   isCountryInEmployeeListRegion,
 } from "@/lib/setup-options";
 import { MAIN_PROJECT_LABEL } from "@/lib/project-labels";
@@ -29,24 +30,27 @@ const REGION_OPTIONS = [
 
 export function EmployeesToolbarFilters({
   filterCountries,
+  projects,
 }: EmployeesToolbarFiltersProps) {
   const { params: sp, update: push } = useInstantSearchParams();
   const role = sp.get("role") ?? "";
-  const region = employeeListRegionFromSlug(sp.get("region") ?? undefined);
+  const region = employeeListRegionFromSlug(sp.get("region") ?? undefined, projects);
   const countryRaw = sp.get("country") ?? "";
-  const country = isCountryInEmployeeListRegion(countryRaw, region)
+  const country = isCountryInEmployeeListRegion(countryRaw, region, projects)
     ? countryRaw
     : "";
 
   // Only projects and countries that have accounts (already limited for OPs).
   const regionOptions = useMemo(() => {
     const present = new Set(filterCountries.map((item) => item.region));
-    return REGION_OPTIONS.filter((option) =>
-      present.has(
-        employeeListRegionFromSlug(option.value) as (typeof filterCountries)[number]["region"]
-      )
+    // Built-in projects, then projects created in Strategy.
+    const custom = projects
+      .filter((project) => !isBuiltInSetupRegion(project.region))
+      .map((project) => ({ value: project.slug, label: project.name }));
+    return [...REGION_OPTIONS, ...custom].filter((option) =>
+      present.has(employeeListRegionFromSlug(option.value, projects))
     );
-  }, [filterCountries]);
+  }, [filterCountries, projects]);
   const countryOptions = useMemo(
     () =>
       [
@@ -63,16 +67,16 @@ export function EmployeesToolbarFilters({
     <div className="flex min-w-0 flex-wrap items-center gap-2">
       <EmployeesToolbarSelect
         label="Region"
-        value={region === "all" ? "" : employeeListRegionSlug(region)}
+        value={region === "all" ? "" : employeeListRegionSlug(region, projects)}
         ariaLabel="Filter by region"
         allLabel="All"
         options={regionOptions}
         onChange={(value) => {
-          const nextRegion = employeeListRegionFromSlug(value || undefined);
+          const nextRegion = employeeListRegionFromSlug(value || undefined, projects);
           const nextCountry =
             country &&
             nextRegion !== "all" &&
-            !isCountryInEmployeeListRegion(country, nextRegion)
+            !isCountryInEmployeeListRegion(country, nextRegion, projects)
               ? undefined
               : country || undefined;
           push({

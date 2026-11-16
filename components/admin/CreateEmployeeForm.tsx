@@ -106,7 +106,8 @@ export function CreateEmployeeForm({
       manager_countries,
       manager_region,
       option,
-      groupRegion
+      groupRegion,
+      projects
     );
     setManagerCountries(next.countries);
     setManagerRegion(next.region);
@@ -391,7 +392,9 @@ export function CreateEmployeeForm({
             managers={managers}
             country={country}
             region={
-              project_slug ? regionFromStrategyProjectSlug(project_slug) : undefined
+              project_slug
+                ? regionFromStrategyProjectSlug(project_slug, projects)
+                : undefined
             }
             managerError={fieldErrors.manager_id}
             managerErrorId="create-manager-error"
@@ -411,7 +414,9 @@ export function CreateEmployeeForm({
             ops={ops}
             admins={admins}
             region={
-              project_slug ? regionFromStrategyProjectSlug(project_slug) : undefined
+              project_slug
+                ? regionFromStrategyProjectSlug(project_slug, projects)
+                : undefined
             }
             country={country}
             error={fieldErrors.supervisor_id}

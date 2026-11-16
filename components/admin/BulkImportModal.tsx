@@ -16,6 +16,7 @@ import {
 } from "@/lib/bulk-import-parse";
 import { sheetLanguage1 } from "@/lib/sheets-country-config";
 import {
+  isBuiltInSetupRegion,
   isCountryInEmployeeListRegion,
   setupRegionForCountry,
   type SetupRegion,
@@ -41,7 +42,10 @@ function fieldsFromHolder(holder: BulkImportHolderOption | null | undefined) {
   const region =
     holder.source === "alphaa"
       ? ("Alphaa" as const)
-      : saved && (!country || isCountryInEmployeeListRegion(country, saved))
+      : saved &&
+          (!isBuiltInSetupRegion(saved) ||
+            !country ||
+            isCountryInEmployeeListRegion(country, saved))
         ? saved
         : country
           ? setupRegionForCountry(country)
@@ -124,10 +128,13 @@ function BulkImportModalDialog({
     [holderId, scopedHolders]
   );
 
+  // A project created in Strategy keeps its own name (server keeps it too).
   const assignedRegion =
     selectedHolder?.source === "alphaa"
       ? "Alphaa"
-      : country
+      : region && !isBuiltInSetupRegion(region)
+        ? region
+        : country
         ? setupRegionForCountry(country)
         : region;
 
@@ -330,7 +337,9 @@ function BulkImportModalDialog({
                   setRegion((prev) =>
                     selectedHolder?.source === "alphaa"
                       ? "Alphaa"
-                      : prev && isCountryInEmployeeListRegion(next, prev)
+                      : prev &&
+                          (!isBuiltInSetupRegion(prev) ||
+                            isCountryInEmployeeListRegion(next, prev))
                         ? prev
                         : setupRegionForCountry(next)
                   );

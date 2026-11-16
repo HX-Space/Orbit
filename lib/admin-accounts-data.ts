@@ -137,7 +137,8 @@ async function fetchTempSpareAccounts(): Promise<AdminSpareAccountListItem[]> {
         AND a.status = 'active'
         AND LOWER(u.role) = 'employee'
         AND u.is_active = TRUE
-        AND LOWER(TRIM(u.region)) IN ('africa', 'europe', 'balkan')
+        -- Every project except Main (Africa, Europe, Asia and Strategy projects).
+        AND LOWER(TRIM(COALESCE(u.region, ''))) NOT IN ('', 'alphaa', 'main')
       ORDER BY u.region ASC, u.country ASC, u.full_name ASC, a.platform ASC, a.id ASC`
   );
   return rows.map((row) => ({
@@ -224,7 +225,8 @@ export async function fetchAdminSpareMarkHolders(): Promise<
          FROM temp_users u
         WHERE LOWER(u.role) = 'employee'
           AND u.is_active = TRUE
-          AND LOWER(TRIM(u.region)) IN ('africa', 'europe', 'balkan')
+          -- Every project except Main (Africa, Europe, Asia and Strategy projects).
+        AND LOWER(TRIM(COALESCE(u.region, ''))) NOT IN ('', 'alphaa', 'main')
           AND EXISTS (
             SELECT 1
               FROM temp_social_media_accounts a
