@@ -45,7 +45,8 @@ export default async function AdminEmployeesPage({
     roleRaw === "manager" ||
     roleRaw === "team_lead" ||
     roleRaw === "op" ||
-    roleRaw === "hoo"
+    roleRaw === "hoo" ||
+    roleRaw === "admin"
       ? roleRaw
       : "all";
 
@@ -82,6 +83,11 @@ export default async function AdminEmployeesPage({
         sameProject(item.region, scope.region) &&
         scope.countries.includes(item.country)
     );
+  }
+
+  // Admin accounts are listed for Admins only.
+  if (viewer.role !== "admin") {
+    listed = listed.filter((row) => row.role !== "admin");
   }
 
   if (viewer.role === "op" && viewer.scope) {

@@ -1,6 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { pool, queryOne } from "@/lib/db";
@@ -67,6 +68,13 @@ export async function changePasswordAction(
     userId,
     passwordHash,
   ]);
+  // Clears a forced change after an admin reset (column from migration 0028).
+  await pool
+    .query(`UPDATE temp_users SET must_change_password = FALSE WHERE id = $1`, [
+      userId,
+    ])
+    .catch(() => undefined);
+  revalidatePath("/", "layout");
 
   await logOrbitAction({
     action: "password_change",
