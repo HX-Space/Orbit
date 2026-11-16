@@ -36,8 +36,10 @@ export default async function AdminStrategyPage({ searchParams }: StrategyPagePr
   ]);
 
   const projects =
-    viewer.role === "op" && viewer.scope?.projectSlug
-      ? allProjects.filter((project) => project.slug === viewer.scope!.projectSlug)
+    viewer.role === "op" && viewer.scope
+      ? allProjects.filter((project) =>
+          viewer.scope!.projects.some((item) => item.projectSlug === project.slug)
+        )
       : allProjects;
 
   const selectedSlug = strategySelectedSlug(params, projects);

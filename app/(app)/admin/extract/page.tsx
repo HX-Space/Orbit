@@ -17,7 +17,10 @@ export default async function AdminExtractPage() {
   const scope = viewer.role === "op" ? viewer.scope : null;
   const projects = (await fetchEmployeeCreateProjectOptions())
     .filter((project) => !isBuiltInSetupRegion(project.region))
-    .filter((project) => !scope || project.region === scope.region)
+    .filter(
+      (project) =>
+        !scope || scope.projects.some((item) => item.region === project.region)
+    )
     .map(({ region, name, countries }) => ({ region, name, countries }));
 
   const countries = scope

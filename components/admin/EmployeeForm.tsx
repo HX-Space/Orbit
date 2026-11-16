@@ -32,6 +32,13 @@ import { AdminCountrySelect } from "@/components/admin/AdminCountrySelect";
 import { EmployeeReportingFields } from "@/components/admin/EmployeeReportingFields";
 import { ManagerCountriesField } from "@/components/admin/ManagerCountriesField";
 import { OpAccessFields } from "@/components/admin/OpAccessFields";
+import { projectNameForSlug } from "@/lib/employee-create-projects";
+import {
+  opAccessEmptyProject,
+  opAccessToSave,
+  toggleOpProject,
+  toggleOpProjectCountry,
+} from "@/lib/op-access";
 import { SupervisorAssignField } from "@/components/admin/SupervisorAssignField";
 
 function normalizeDate(v: string | null): string {
@@ -87,6 +94,12 @@ export function EmployeeForm({
       manager_countries: initial.manager_countries,
       op_project_slug: initial.op_project_slug,
       op_countries: initial.op_countries,
+      op_projects:
+        initial.op_projects && initial.op_projects.length > 0
+          ? initial.op_projects
+          : initial.op_project_slug
+            ? [{ project_slug: initial.op_project_slug, countries: initial.op_countries }]
+            : [],
       country: initial.country,
       region:
         normalizeProjectRegion(initial.region) ??
@@ -191,20 +204,14 @@ export function EmployeeForm({
     });
   }
 
-  function toggleOpCountry(option: string) {
-    setForm((f) => ({
-      ...f,
-      op_countries: f.op_countries.includes(option)
-        ? f.op_countries.filter((c) => c !== option)
-        : [...f.op_countries, option],
-    }));
+  function toggleOpAccessProject(slug: string) {
+    setForm((f) => ({ ...f, op_projects: toggleOpProject(f.op_projects, slug) }));
   }
 
-  function handleOpProjectChange(nextSlug: string) {
+  function toggleOpAccessCountry(slug: string, option: string) {
     setForm((f) => ({
       ...f,
-      op_project_slug: nextSlug,
-      op_countries: [],
+      op_projects: toggleOpProjectCountry(f.op_projects, slug, option),
     }));
   }
 
@@ -226,18 +233,25 @@ export function EmployeeForm({
         return;
       }
     }
+    const opSaved = opAccessToSave(form.op_projects);
     if (!isAlphaa && isOpRole) {
-      if (!form.op_project_slug.trim()) {
+      if (form.op_projects.length === 0) {
         toast.error("Select a project for this Operation Manager.");
         return;
       }
-      if (form.op_countries.length === 0) {
+      const empty = opAccessEmptyProject(form.op_projects);
+      if (empty) {
         toast.error(
-          "Select at least one country this Operation Manager can access."
+          `Select at least one country in ${projectNameForSlug(
+            projects,
+            empty.project_slug
+          )}, or untick that project.`
         );
         return;
       }
     }
+    // Main project = first picked; older single-project fields follow it.
+    const opMain = opSaved[0] ?? null;
 
     startTransition(async () => {
       try {
@@ -272,13 +286,14 @@ export function EmployeeForm({
             op_id: form.op_id,
             manager_countries:
               form.role === "manager" ? form.manager_countries : undefined,
-            project_slug: isOpRole ? form.op_project_slug : undefined,
-            op_countries: isOpRole ? form.op_countries : undefined,
+            project_slug: isOpRole ? opMain?.project_slug : undefined,
+            op_countries: isOpRole ? opMain?.countries : undefined,
+            op_projects: isOpRole ? opSaved : undefined,
             country:
               form.role === "manager"
                 ? form.manager_countries[0] ?? form.country
                 : isOpRole
-                  ? form.op_countries[0] ?? form.country
+                  ? opMain?.countries[0] ?? form.country
                   : form.country.trim(),
             region: showCountryFields || isManagerRole ? form.region : undefined,
           };
@@ -431,6 +446,7 @@ export function EmployeeForm({
                 op_id: null,
                 op_project_slug: nextRole === "op" ? f.op_project_slug : "",
                 op_countries: nextRole === "op" ? f.op_countries : [],
+                op_projects: nextRole === "op" ? f.op_projects : [],
               }));
             }}
             aria-label="Select role"
@@ -502,12 +518,9 @@ export function EmployeeForm({
         {isOpRole ? (
           <OpAccessFields
             projects={projects}
-            projectSlug={form.op_project_slug}
-            selectedCountries={form.op_countries}
-            fieldClass={fieldClass}
-            invalidFieldClass="border-[var(--color-coral)]"
-            onProjectChange={handleOpProjectChange}
-            onToggleCountry={toggleOpCountry}
+            access={form.op_projects}
+            onToggleProject={toggleOpAccessProject}
+            onToggleCountry={toggleOpAccessCountry}
           />
         ) : null}
       </div>

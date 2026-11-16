@@ -25,30 +25,32 @@ export default async function AdminOverviewPage({
 
   const params = await searchParams;
   const requestedRegion = adminRegionFromSlug(params.region);
-  const opScope = viewer.scope;
-  const region =
-    viewer.role === "op" && opScope?.projectSlug
-      ? adminRegionFromSlug(opScope.projectSlug)
-      : requestedRegion;
+  const opScope = viewer.role === "op" ? viewer.scope : null;
+  // OPs: the project tab they picked if it's one of theirs, else their first.
+  const opProject = opScope
+    ? (opScope.projects.find(
+        (project) => adminRegionFromSlug(project.projectSlug) === requestedRegion
+      ) ?? opScope.projects[0] ?? null)
+    : null;
+  const region = opProject
+    ? adminRegionFromSlug(opProject.projectSlug)
+    : requestedRegion;
 
   // Independent loads: fetch together instead of one after the other.
   const [strategyProjects, coverage] = await Promise.all([
     fetchStrategyProjects(),
     fetchAdminCountryCoverage({
       region,
-      countries:
-        viewer.role === "op" && opScope
-          ? opScope.countries.length > 0
-            ? opScope.countries
-            : []
-          : undefined,
+      countries: opScope ? (opProject?.countries ?? []) : undefined,
     }),
   ]);
 
   const projects =
-    viewer.role === "op" && opScope?.projectSlug
+    opScope
       ? strategyProjects
-          .filter((project) => project.slug === opScope.projectSlug)
+          .filter((project) =>
+            opScope.projects.some((item) => item.projectSlug === project.slug)
+          )
           .map((project) => ({ slug: project.slug, name: project.name }))
       : strategyProjects.map((project) => ({
           slug: project.slug,

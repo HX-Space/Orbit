@@ -1,4 +1,5 @@
 import { query, queryOne } from "@/lib/db";
+import { opScopeSql } from "@/lib/op-scope";
 import { getTodayCairoDate } from "@/lib/cairo-date";
 import { sameProjectSql } from "@/lib/project-region-sql";
 import type { OpAccessScope } from "@/types/admin";
@@ -124,10 +125,7 @@ async function fetchCheckRows(
     "COALESCE(u.employment_status, 'active') <> 'deactivated'",
   ];
   if (scope) {
-    values.push(scope.countries);
-    where.push(`u.country = ANY($${values.length}::text[])`);
-    values.push(scope.region);
-    where.push(sameProjectSql("u.region", `$${values.length}::text`));
+    where.push(opScopeSql(scope, values, "u.region", "u.country"));
   }
 
   return query<AdminRow>(

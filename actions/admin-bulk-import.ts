@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import * as XLSX from "xlsx";
 import { auth } from "@/auth";
 import { requirePagePermission } from "@/lib/admin-access";
-import { sameProject } from "@/lib/project-region-sql";
+import { opScopeIncludes } from "@/lib/op-scope";
+import type { OpAccessScope } from "@/types/admin";
 import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
-import { baseCountryFromDisplay } from "@/lib/overview-country-display";
 import { pool, queryOne } from "@/lib/db";
 import { publicAdminMutationError } from "@/lib/admin-action-error";
 import {
@@ -64,7 +64,7 @@ async function requireAdminOrManager() {
 }
 
 async function assertOpCanImportHolder(
-  scope: { region: string; countries: string[] } | null,
+  scope: OpAccessScope | null,
   holderId: number,
   source: "temp" | "alphaa",
   country: string
@@ -81,9 +81,8 @@ async function assertOpCanImportHolder(
   if (!holder) return "Account holder not found.";
   const holderProject = source === "alphaa" ? "Alphaa" : holder.region;
   if (
-    !sameProject(holderProject, scope.region) ||
-    !holder.country ||
-    !allowed.has(baseCountryFromDisplay(holder.country))
+    !opScopeIncludes(scope, holderProject, holder.country) ||
+    !opScopeIncludes(scope, holderProject, country)
   ) {
     return "You can only import accounts for employees in your project and countries.";
   }

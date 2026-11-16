@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import type { PoolClient } from "pg";
+import type { OpProjectAccess } from "@/types/admin";
 import { requireFullAdminActor } from "@/lib/admin-access";
 import type { AdminPermissionAction } from "@/types/permissions";
 import { pool, queryOne } from "@/lib/db";
@@ -100,6 +101,56 @@ const managerCountriesSchema = z
   .array(setupCountrySchema)
   .min(1, "Select at least one country for this manager.");
 
+/** Several projects for an Operation Manager, each with its own countries. */
+const opProjectsSchema = z
+  .array(
+    z.object({
+      project_slug: z.string().trim().min(1),
+      countries: z.array(z.string().trim().min(1)),
+    })
+  )
+  .optional();
+
+type OpAccessInput = { project_slug: string; countries: string[] };
+
+/**
+ * The OP's projects from the form: `op_projects`, or the single project fields.
+ * Each project must exist and only use its own countries.
+ */
+function resolveOpAccess(
+  p: { op_projects?: OpAccessInput[]; project_slug?: string; op_countries?: string[] },
+  projects: Awaited<ReturnType<typeof fetchEmployeeCreateProjectOptions>>
+): { access: OpProjectAccess[] } | { error: string } {
+  const raw: OpAccessInput[] =
+    p.op_projects && p.op_projects.length > 0
+      ? p.op_projects
+      : [{ project_slug: p.project_slug ?? "", countries: p.op_countries ?? [] }];
+  const access: OpProjectAccess[] = [];
+  for (const item of raw) {
+    const slug = item.project_slug.trim();
+    const countries = [...new Set(item.countries.map((c) => c.trim()).filter(Boolean))];
+    if (!slug && countries.length === 0) continue;
+    if (access.some((entry) => entry.projectSlug === slug)) continue;
+    const project = projects.find((entry) => entry.slug === slug);
+    if (!project) return { error: "Select a valid project." };
+    if (countries.length === 0) {
+      return { error: `Select at least one country in ${project.name}.` };
+    }
+    if (countries.some((country) => !project.countries.includes(country))) {
+      return { error: `Select countries from ${project.name} only.` };
+    }
+    access.push({
+      projectSlug: slug,
+      region: regionFromStrategyProjectSlug(slug, projects),
+      countries,
+    });
+  }
+  if (access.length === 0) {
+    return { error: "Select a project for this Operation Manager." };
+  }
+  return { access };
+}
+
 const createEmployeeSchema = z
   .object({
     full_name: z.string().trim().min(1, "Enter a full name.").max(255),
@@ -117,6 +168,7 @@ const createEmployeeSchema = z
     op_id: z.number().int().positive().nullable().optional(),
     manager_countries: z.array(z.string()).optional(),
     op_countries: z.array(z.string()).optional(),
+    op_projects: opProjectsSchema,
     hire_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     current_level: z.number().int().min(1).max(6).optional(),
     country: z.string().optional(),
@@ -181,19 +233,30 @@ async function replaceManagerCountries(
 async function replaceOpCountries(
   client: PoolClient,
   userId: number,
-  countries: string[]
+  access: OpProjectAccess[]
 ) {
+  const column = await client.query(
+    `SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'temp_op_countries' AND column_name = 'project_slug'`
+  );
+  const perProject = (column.rowCount ?? 0) > 0;
+  if (!perProject && access.length > 1) {
+    throw new Error("Run migration 0029 before giving an OP more than one project.");
+  }
   await client.query(`DELETE FROM temp_op_countries WHERE user_id = $1`, [
     userId,
   ]);
-  for (const country of countries) {
-    const trimmed = country.trim();
-    if (!trimmed) continue;
-    await client.query(
-      `INSERT INTO temp_op_countries (user_id, country) VALUES ($1, $2)
-       ON CONFLICT DO NOTHING`,
-      [userId, trimmed]
-    );
+  for (const project of access) {
+    for (const country of project.countries) {
+      await client.query(
+        perProject
+          ? `INSERT INTO temp_op_countries (user_id, project_slug, country)
+             VALUES ($1, $3, $2) ON CONFLICT DO NOTHING`
+          : `INSERT INTO temp_op_countries (user_id, country) VALUES ($1, $2)
+             ON CONFLICT DO NOTHING`,
+        perProject ? [userId, country, project.projectSlug] : [userId, country]
+      );
+    }
   }
 }
 
@@ -227,14 +290,12 @@ export async function createEmployee(
       }
       managerCountries = countriesParsed.data;
     }
+    let opAccess: OpProjectAccess[] = [];
     if (role === "op") {
-      const countriesParsed = managerCountriesSchema.safeParse(
-        p.op_countries ?? []
-      );
-      if (!countriesParsed.success) {
-        return { error: publicAdminMutationError(countriesParsed.error) };
-      }
-      opCountries = countriesParsed.data;
+      const resolved = resolveOpAccess(p, await fetchEmployeeCreateProjectOptions());
+      if ("error" in resolved) return { error: resolved.error };
+      opAccess = resolved.access;
+      opCountries = opAccess.flatMap((project) => project.countries);
     }
 
     const projectSlug = (p.project_slug ?? "").trim();
@@ -260,20 +321,9 @@ export async function createEmployee(
     }
 
     if (role === "op") {
-      const projects = await fetchEmployeeCreateProjectOptions();
-      const project = projects.find((item) => item.slug === projectSlug);
-      if (!project) {
-        return { error: "Select a valid project." };
-      }
-      const projectCountries = countriesForCreateProject(projects, projectSlug);
-      if (
-        opCountries.length === 0 ||
-        opCountries.some((country) => !projectCountries.includes(country))
-      ) {
-        return { error: "Select countries from this project only." };
-      }
-      assignedRegion = regionFromStrategyProjectSlug(projectSlug, projects);
-      opProjectSlug = projectSlug;
+      // Main project = the first one picked.
+      assignedRegion = opAccess[0]!.region;
+      opProjectSlug = opAccess[0]!.projectSlug;
     } else if (role !== "manager" && role !== "admin" && role !== "hoo") {
       const projects = await fetchEmployeeCreateProjectOptions();
       const project = projects.find((item) => item.slug === projectSlug);
@@ -392,7 +442,7 @@ export async function createEmployee(
       await replaceManagerCountries(client, id, managerCountries);
     }
     if (role === "op") {
-      await replaceOpCountries(client, id, opCountries);
+      await replaceOpCountries(client, id, opAccess);
     }
 
     await client.query("COMMIT");
@@ -438,6 +488,7 @@ const updateProfileSchema = z
     manager_countries: z.array(z.string()).optional(),
     project_slug: z.string().trim().optional(),
     op_countries: z.array(z.string()).optional(),
+    op_projects: opProjectsSchema,
     country: z.string().trim(),
     region: z.string().trim().max(120).optional(),
   })
@@ -496,11 +547,14 @@ export async function updateEmployeeProfile(
   if (p.role === "manager") {
     managerCountries = managerCountriesSchema.parse(p.manager_countries ?? []);
   }
+  let opAccess: OpProjectAccess[] = [];
   if (p.role === "op") {
-    opCountries = managerCountriesSchema.parse(p.op_countries ?? []);
+    const resolved = resolveOpAccess(p, await fetchEmployeeCreateProjectOptions());
+    if ("error" in resolved) throw new Error(resolved.error);
+    opAccess = resolved.access;
+    opCountries = opAccess.flatMap((project) => project.countries);
   }
 
-  const projectSlug = (p.project_slug ?? "").trim();
   let assignedRegion: string =
     p.role === "manager"
       ? setupRegionForCountry(managerCountries[0]!)
@@ -510,21 +564,10 @@ export async function updateEmployeeProfile(
   let opProjectSlug: string | null = null;
 
   if (p.role === "op") {
-    const projects = await fetchEmployeeCreateProjectOptions();
-    const project = projects.find((item) => item.slug === projectSlug);
-    if (!project) {
-      throw new Error("Select a valid project.");
-    }
-    const projectCountries = countriesForCreateProject(projects, projectSlug);
-    if (
-      opCountries.length === 0 ||
-      opCountries.some((country) => !projectCountries.includes(country))
-    ) {
-      throw new Error("Select countries from this project only.");
-    }
-    assignedRegion = regionFromStrategyProjectSlug(projectSlug, projects);
+    // Main project = the first one picked.
+    assignedRegion = opAccess[0]!.region;
     primaryCountry = opCountries[0]!;
-    opProjectSlug = projectSlug;
+    opProjectSlug = opAccess[0]!.projectSlug;
   }
 
   const client = await pool.connect();
@@ -622,7 +665,7 @@ export async function updateEmployeeProfile(
     }
 
     if (p.role === "op") {
-      await replaceOpCountries(client, user_id, opCountries);
+      await replaceOpCountries(client, user_id, opAccess);
     } else {
       await client.query(`DELETE FROM temp_op_countries WHERE user_id = $1`, [
         user_id,
