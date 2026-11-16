@@ -227,6 +227,19 @@ export async function fetchAdminEmployeesList(
         ),
         ARRAY[]::varchar[]
       ) AS op_countries,
+      (
+        -- Project of each OP country (column from migration 0029; read via
+        -- to_jsonb so the list still works before that migration).
+        SELECT json_agg(
+                 json_build_object(
+                   'slug', COALESCE(NULLIF(TRIM(to_jsonb(oc) ->> 'project_slug'), ''), u.op_project_slug),
+                   'country', oc.country
+                 )
+                 ORDER BY oc.country
+               )
+          FROM temp_op_countries oc
+         WHERE oc.user_id = u.id
+      ) AS op_access,
       u.current_level,
       (u.target_x_count + u.target_facebook_personal_count + u.target_facebook_umbrella_count
         + u.target_instagram_count + u.target_tiktok_count)::int AS target_accounts_sum,
@@ -271,6 +284,7 @@ export async function fetchAdminEmployeesList(
       op_project_name: string | null;
       manager_countries: string[] | null;
       op_countries: string[] | null;
+      op_access: { slug: string | null; country: string }[] | null;
       current_level: number;
       target_accounts_sum: number;
       account_count: number;
@@ -278,12 +292,40 @@ export async function fetchAdminEmployeesList(
     }>(sql, params),
     fetchAlphaaEmployeesList(filters),
   ]);
+  const projectOptions = rows.some((r) => r.role === "op")
+    ? await fetchEmployeeCreateProjectOptions()
+    : [];
 
   const tempRows = rows.map((r) => {
     const country = r.country?.trim() || null;
     const region = r.region?.trim() || null;
     const managerCountries = r.manager_countries ?? [];
-    const opCountries = r.op_countries ?? [];
+    // Operation Managers: countries per project (main project first).
+    const opGroups = new Map<string, string[]>();
+    if (r.role === "op") {
+      const main = r.op_project_slug?.trim() ?? "";
+      if (main) opGroups.set(main, []);
+      for (const item of r.op_access ?? []) {
+        const slug = item.slug?.trim() ?? "";
+        if (!slug) continue;
+        const list = opGroups.get(slug) ?? [];
+        if (!list.includes(item.country)) list.push(item.country);
+        opGroups.set(slug, list);
+      }
+    }
+    const opCountryGroups = [...opGroups.entries()]
+      .filter(([, list]) => list.length > 0)
+      .map(([slug, list]) => {
+        const option = projectOptions.find((item) => item.slug === slug);
+        return {
+          project: option?.name ?? slug,
+          countries: mapEmployeeListCountries(list, {
+            source: "temp",
+            region: option?.region ?? region,
+          }),
+        };
+      });
+    const opCountries = [...new Set(r.op_countries ?? [])];
     const rawCountries =
       r.role === "manager" && managerCountries.length > 0
         ? managerCountries
@@ -298,7 +340,8 @@ export async function fetchAdminEmployeesList(
     });
     const project =
       r.role === "op"
-        ? r.op_project_name?.trim() ||
+        ? opCountryGroups[0]?.project ||
+          r.op_project_name?.trim() ||
           r.op_project_slug?.trim() ||
           null
         : region
@@ -321,9 +364,14 @@ export async function fetchAdminEmployeesList(
       op_name: r.op_name,
       region,
       project,
+      projects:
+        opCountryGroups.length > 1
+          ? opCountryGroups.map((group) => group.project)
+          : undefined,
       country: countries[0] ?? country,
       language: r.language,
       countries,
+      countryGroups: opCountryGroups.length > 1 ? opCountryGroups : undefined,
       current_level: r.current_level,
       target_accounts_sum: r.target_accounts_sum,
       account_count: r.account_count,

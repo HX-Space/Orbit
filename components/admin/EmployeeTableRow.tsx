@@ -151,10 +151,10 @@ export function EmployeeTableRow({
           </div>
         </td>
         <td className="px-4 py-3 align-top">
-          <EmployeeProjectCell project={row.project} />
+          <EmployeeProjectCell project={row.project} projects={row.projects} />
         </td>
         <td className="px-4 py-3 align-top">
-          <EmployeeCountryCell countries={row.countries} />
+          <EmployeeCountryCell countries={row.countries} groups={row.countryGroups} />
         </td>
         <td className="px-4 py-3 text-[14px] text-[var(--color-ink)]">
           {adminRoleBadge(row.role)}

@@ -49,9 +49,13 @@ export type AdminEmployeeListRow = {
   region: string | null;
   /** Strategy / roster project label shown in the employees table. */
   project: string | null;
+  /** Every project (Operation Managers with several projects). */
+  projects?: string[];
   country: string | null;
   language: string | null;
   countries: string[];
+  /** Countries grouped by project (Operation Managers with several projects). */
+  countryGroups?: EmployeeCountryGroup[];
   current_level: number;
   target_accounts_sum: number;
   /** All accounts (incl. spare). Accounts themselves load when the row opens. */
@@ -839,12 +843,20 @@ export type EmployeesToolbarSelectProps = {
   onChange: (value: string) => void;
 };
 
+export type EmployeeCountryGroup = {
+  project: string;
+  countries: string[];
+};
+
 export type EmployeeCountryCellProps = {
   countries: string[];
+  /** When set (more than one project), countries are shown per project. */
+  groups?: EmployeeCountryGroup[];
 };
 
 export type EmployeeProjectCellProps = {
   project: string | null;
+  projects?: string[];
 };
 
 export type AccountTotalsCellProps = {
