@@ -92,7 +92,7 @@ export async function fetchAdminEmployeesList(
 
   const params: unknown[] = [];
   const where: string[] = [
-    `u.role IN ('employee', 'manager', 'team_lead', 'op', 'hoo')`,
+    `u.role IN ('employee', 'manager', 'team_lead', 'op', 'hoo', 'admin')`,
   ];
 
   if (
@@ -100,7 +100,8 @@ export async function fetchAdminEmployeesList(
     role === "manager" ||
     role === "team_lead" ||
     role === "op" ||
-    role === "hoo"
+    role === "hoo" ||
+    role === "admin"
   ) {
     params.push(role);
     where.push(`u.role = $${params.length}`);

@@ -686,6 +686,48 @@ export async function setEmployeeEmploymentStatus(
   });
 }
 
+const resetPasswordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters.")
+  .max(128, "Password is too long.");
+
+/** Admin sets a temporary password; the user must change it on next sign-in. */
+export async function resetEmployeePassword(
+  user_id: number,
+  password: string
+): Promise<void> {
+  const { actorRole } = await requireAdminSession();
+  if (!Number.isFinite(user_id)) throw new Error("Invalid user.");
+  await assertMayChangeUser(actorRole, user_id);
+
+  const parsed = resetPasswordSchema.safeParse(password);
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid password.");
+  }
+
+  const password_hash = await bcrypt.hash(parsed.data, 10);
+  try {
+    await pool.query(
+      `UPDATE temp_users
+          SET password_hash = $2, must_change_password = TRUE
+        WHERE id = $1`,
+      [user_id, password_hash]
+    );
+  } catch (e) {
+    if ((e as { code?: string }).code === "42703") {
+      throw new Error("Run migration 0028 before resetting passwords.");
+    }
+    throw e;
+  }
+  revalidateAdminEmployee(user_id);
+  await logOrbitAction({
+    action: "update",
+    resource: "employee",
+    summary: `Reset password for employee #${user_id}`,
+    details: { userId: user_id, mustChangePassword: true },
+  });
+}
+
 export async function setEmployeeCode(
   user_id: number,
   employee_code: string | null

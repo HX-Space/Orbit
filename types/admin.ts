@@ -9,7 +9,7 @@ export type EmployeeListStatusFilter = "all" | "active" | "on_hold" | "inactive"
 export type AdminEmployeeListFilters = {
   q?: string;
   status?: EmployeeListStatusFilter;
-  role?: "all" | "employee" | "manager" | "team_lead" | "op" | "hoo";
+  role?: "all" | "employee" | "manager" | "team_lead" | "op" | "hoo" | "admin";
   region?: "Africa" | "Europe" | "Alphaa" | "Asia";
   country?: string;
   teamLeadId?: number | null;
@@ -1439,4 +1439,10 @@ export type ExtractPreviewTableProps = {
 export type ExtractExportButtonProps = {
   rows: AdminExtractRow[];
   disabled?: boolean;
+};
+
+export type EmployeeResetPasswordButtonProps = {
+  userId: number;
+  fullName: string;
+  source: "temp" | "alphaa";
 };

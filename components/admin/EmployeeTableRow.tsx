@@ -13,6 +13,7 @@ import { EmployeeAccountsPanel } from "@/components/admin/EmployeeAccountsPanel"
 import { AccountTotalsCell } from "@/components/admin/AccountTotalsCell";
 import { EmployeeStatusSelect } from "@/components/admin/EmployeeStatusSelect";
 import { EmployeePermissionsButton } from "@/app/(app)/admin/employees/components/EmployeePermissionsButton";
+import { EmployeeResetPasswordButton } from "@/app/(app)/admin/employees/components/EmployeeResetPasswordButton";
 import { isTempPlanCountry } from "@/lib/region-config";
 import { MAIN_PROJECT_LABEL } from "@/lib/project-labels";
 import type {
@@ -200,6 +201,11 @@ export function EmployeeTableRow({
                 source={row.source}
               />
             ) : null}
+            <EmployeeResetPasswordButton
+              userId={row.id}
+              fullName={row.full_name}
+              source={row.source}
+            />
             <EmployeeDeleteButton
               userId={row.id}
               fullName={row.full_name}
