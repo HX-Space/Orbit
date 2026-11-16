@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireAdminPageAccess, viewerAllows } from "@/lib/admin-access";
 import { fetchAdminEmployeesList } from "@/lib/admin-data";
+import { opScopeIncludes } from "@/lib/op-scope";
 import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
 import {
   employeeListStatusCounts,
@@ -14,7 +15,6 @@ import { AdminWorkspace } from "@/components/admin/AdminWorkspace";
 import { adminViewEmployees } from "@/lib/admin-view";
 import { baseCountryFromDisplay } from "@/lib/overview-country-display";
 import { fetchEmployeeFilterCountries } from "@/lib/employee-filter-countries";
-import { sameProject } from "@/lib/project-region-sql";
 import {
   employeeListRegionFromSlug,
   isCountryInEmployeeListRegion,
@@ -63,8 +63,14 @@ export default async function AdminEmployeesPage({
     : "";
 
   if (viewer.role === "op" && viewer.scope) {
-    region = viewer.scope.region as SetupRegion;
-    if (country && !viewer.scope.countries.includes(country)) {
+    const scope = viewer.scope;
+    // One project: list only it. Several: keep the filter picked, if it's theirs.
+    if (scope.projects.length === 1) {
+      region = scope.region as SetupRegion;
+    } else if (region && !scope.projects.some((item) => item.region === region)) {
+      region = undefined;
+    }
+    if (country && !scope.countries.includes(country)) {
       country = "";
     }
   }
@@ -81,10 +87,8 @@ export default async function AdminEmployeesPage({
   if (viewer.role === "op" && viewer.scope) {
     // Operation Managers: only their own project and countries in the dropdowns.
     const scope = viewer.scope;
-    filterCountries = filterCountries.filter(
-      (item) =>
-        sameProject(item.region, scope.region) &&
-        scope.countries.includes(item.country)
+    filterCountries = filterCountries.filter((item) =>
+      opScopeIncludes(scope, item.region, item.country)
     );
   }
 
@@ -94,8 +98,8 @@ export default async function AdminEmployeesPage({
   }
 
   if (viewer.role === "op" && viewer.scope) {
-    const allowed = new Set(viewer.scope.countries);
-    const regionName = viewer.scope.region.toLowerCase();
+    const scope = viewer.scope;
+    const allowed = new Set(scope.countries);
     listed = listed.filter((row) => {
       // Operation Managers don't see themselves in their own team list.
       if (row.source === "temp" && row.id === viewer.userId) return false;
@@ -103,8 +107,12 @@ export default async function AdminEmployeesPage({
       if (!allowed.has(base) && !(row.country && allowed.has(row.country))) {
         return false;
       }
+      // Employees: one of the OP's projects and that project's countries.
       if (row.role === "employee") {
-        return (row.region ?? "").trim().toLowerCase() === regionName;
+        return (
+          Boolean(row.region?.trim()) &&
+          opScopeIncludes(scope, row.region, row.country)
+        );
       }
       return true;
     });

@@ -63,6 +63,7 @@ export async function AlphaaEmployeeProfile({
           op_id: null,
           manager_countries: [],
           op_project_slug: "",
+          op_projects: [],
           op_countries: [],
           current_level: 2,
           country,

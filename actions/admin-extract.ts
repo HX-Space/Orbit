@@ -2,7 +2,10 @@
 
 import { requirePagePermission, type AdminViewer } from "@/lib/admin-access";
 import { baseCountryFromDisplay } from "@/lib/overview-country-display";
-import { fetchAdminExtract } from "@/lib/admin-extract-data";
+import {
+  fetchAdminExtract,
+  mergeAdminExtractResults,
+} from "@/lib/admin-extract-data";
 import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
 import { isBuiltInSetupRegion } from "@/lib/setup-options";
 import { isExtractPlatform } from "@/lib/admin-extract-platform";
@@ -74,19 +77,28 @@ function normalizeFilters(
 function scopeFiltersForViewer(
   filters: AdminExtractFilters,
   viewer: AdminViewer
-): AdminExtractFilters | null {
-  if (viewer.role !== "op") return filters;
+): AdminExtractFilters[] | null {
+  if (viewer.role !== "op") return [filters];
   const scope = viewer.scope;
   if (!scope || scope.countries.length === 0) return null;
-  const allowed = new Set(scope.countries);
-  const picked = filters.countries.filter((country) =>
-    allowed.has(baseCountryFromDisplay(country))
+  // One pass per project the OP can access (all of them, or the one picked).
+  const projects = scope.projects.filter(
+    (project) =>
+      project.countries.length > 0 &&
+      (filters.region === "all" || project.region === filters.region)
   );
-  return {
-    ...filters,
-    region: scope.region as AdminExtractRegionFilter,
-    countries: picked.length > 0 ? picked : [...scope.countries],
-  };
+  const passes = projects.map((project) => {
+    const allowed = new Set(project.countries);
+    const picked = filters.countries.filter((country) =>
+      allowed.has(baseCountryFromDisplay(country))
+    );
+    return {
+      ...filters,
+      region: project.region as AdminExtractRegionFilter,
+      countries: picked.length > 0 ? picked : [...project.countries],
+    };
+  });
+  return passes.length > 0 ? passes : null;
 }
 
 export async function runAdminExtract(
@@ -114,7 +126,9 @@ export async function runAdminExtract(
         },
       };
     }
-    return await fetchAdminExtract(filters);
+    if (filters.length === 1) return await fetchAdminExtract(filters[0]!);
+    const results = await Promise.all(filters.map((item) => fetchAdminExtract(item)));
+    return mergeAdminExtractResults(results);
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Extract failed.",

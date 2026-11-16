@@ -16,6 +16,7 @@ import type {
   AdminEmployeeSource,
   EmployeeActivityItem,
   EmployeeFormInitial,
+  OpProjectAccessInput,
 } from "@/types/admin";
 import type { CommandPalettePerson } from "@/types/layout";
 import {
@@ -368,6 +369,18 @@ export async function fetchAdminSupervisorOptions(): Promise<
   );
 }
 
+/** Every project an OP can access, with its countries (first = main project). */
+export async function fetchOpProjectsForUser(
+  userId: number
+): Promise<OpProjectAccessInput[]> {
+  const { fetchOpAccessScope } = await import("@/lib/op-scope");
+  const scope = await fetchOpAccessScope(userId);
+  return (scope?.projects ?? []).map((project) => ({
+    project_slug: project.projectSlug,
+    countries: project.countries,
+  }));
+}
+
 export async function fetchOpCountriesForUser(
   userId: number
 ): Promise<string[]> {
@@ -464,7 +477,7 @@ export async function fetchAdminEmployeeEditorBundle(
     ops,
     admins,
     managerCountries,
-    opCountries,
+    opProjects,
     projects,
     activeCounts,
   ] = await Promise.all([
@@ -476,8 +489,8 @@ export async function fetchAdminEmployeeEditorBundle(
       ? fetchManagerCountriesForUser(userId)
       : Promise.resolve([] as string[]),
     user.role === "op"
-      ? fetchOpCountriesForUser(userId)
-      : Promise.resolve([] as string[]),
+      ? fetchOpProjectsForUser(userId)
+      : Promise.resolve([] as OpProjectAccessInput[]),
     fetchEmployeeCreateProjectOptions(),
     fetchActiveAccountCountsByPlatform(userId),
   ]);
@@ -497,7 +510,8 @@ export async function fetchAdminEmployeeEditorBundle(
     op_id: user.op_id ?? null,
     manager_countries: managerCountries,
     op_project_slug: user.op_project_slug ?? "",
-    op_countries: opCountries,
+    op_countries: opProjects.flatMap((project) => project.countries),
+    op_projects: opProjects,
     current_level: user.current_level,
     country: user.country ?? "",
     region: user.region ?? "",

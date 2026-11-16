@@ -13,9 +13,8 @@ import { HeaderSearch } from "@/components/layout/HeaderSearch";
 import { HeaderUserMenu } from "@/components/layout/HeaderUserMenu";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { baseCountryFromDisplay } from "@/lib/overview-country-display";
 import { isAdminWorkspaceRole } from "@/lib/role-hierarchy";
-import { sameProject } from "@/lib/project-region-sql";
+import { opScopeIncludes } from "@/lib/op-scope";
 import type { AppHeaderProps } from "@/types/layout";
 import type { AdminPermissionPageKey } from "@/types/permissions";
 import Link from "next/link";
@@ -43,26 +42,20 @@ export async function AppHeader({
     : [[], []];
 
   if (viewer?.role === "op" && viewer.scope) {
-    const allowed = new Set(viewer.scope.countries);
-    const regionName = viewer.scope.region.toLowerCase();
-    const inScopeCountry = (country: string | null | undefined) => {
-      if (!country) return false;
-      const base = baseCountryFromDisplay(country);
-      return allowed.has(base) || allowed.has(country);
-    };
-    // Same project too: Sudan / Somalia are Africa and Main, Palestine is Main and Asia.
-    spareAccounts = spareAccounts.filter(
-      (account) =>
-        inScopeCountry(account.country) &&
-        sameProject(
-          account.source === "alphaa" ? "Alphaa" : account.region,
-          viewer.scope!.region
-        )
+    const scope = viewer.scope;
+    // One of the OP's projects and its countries (Sudan / Somalia are Africa and
+    // Main, Palestine is Main and Asia, Africa 2 shares Africa's countries).
+    spareAccounts = spareAccounts.filter((account) =>
+      opScopeIncludes(
+        scope,
+        account.source === "alphaa" ? "Alphaa" : account.region,
+        account.country
+      )
     );
     spareHolders = spareHolders.filter(
       (holder) =>
-        inScopeCountry(holder.country) &&
-        (holder.region ?? "").trim().toLowerCase() === regionName
+        Boolean(holder.region?.trim()) &&
+        opScopeIncludes(scope, holder.region, holder.country)
     );
   }
 

@@ -12,11 +12,13 @@ import {
 import { regionDisplayLabel } from "@/lib/project-labels";
 import {
   countriesForCreateProject,
+  projectNameForSlug,
   regionFromStrategyProjectSlug,
 } from "@/lib/employee-create-projects";
 import { ROLE_LABELS, reportingFieldsFromSupervisor } from "@/lib/role-hierarchy";
 import type { Role } from "@/types/db";
 import type {
+  OpProjectAccessInput,
   CreateEmployeeFieldErrors,
   CreateEmployeeFormProps,
 } from "@/types/admin";
@@ -25,6 +27,12 @@ import { CreateEmployeeProjectFields } from "@/components/admin/CreateEmployeePr
 import { EmployeeReportingFields } from "@/components/admin/EmployeeReportingFields";
 import { ManagerCountriesField } from "@/components/admin/ManagerCountriesField";
 import { OpAccessFields } from "@/components/admin/OpAccessFields";
+import {
+  opAccessEmptyProject,
+  opAccessToSave,
+  toggleOpProject,
+  toggleOpProjectCountry,
+} from "@/lib/op-access";
 import { SupervisorAssignField } from "@/components/admin/SupervisorAssignField";
 import {
   firstCreateEmployeeError,
@@ -70,7 +78,10 @@ export function CreateEmployeeForm({
   );
   const [manager_countries, setManagerCountries] = useState<string[]>([]);
   const [manager_region, setManagerRegion] = useState("");
-  const [op_countries, setOpCountries] = useState<string[]>([]);
+  const [op_access, setOpAccess] = useState<OpProjectAccessInput[]>([]);
+  // Main project (first picked) drives the single-project fields and checks.
+  const opMain = opAccessToSave(op_access)[0] ?? op_access[0] ?? null;
+  const op_countries = opMain?.countries ?? [];
   const [project_slug, setProjectSlug] = useState("");
   const [country, setCountry] = useState("");
   const [fieldErrors, setFieldErrors] = useState<CreateEmployeeFieldErrors>({});
@@ -113,18 +124,9 @@ export function CreateEmployeeForm({
     setManagerRegion(next.region);
   }
 
-  function toggleOpCountry(option: string) {
-    setOpCountries((prev) =>
-      prev.includes(option)
-        ? prev.filter((c) => c !== option)
-        : [...prev, option]
-    );
-  }
-
   function handleProjectChange(nextSlug: string) {
     setProjectSlug(nextSlug);
     setCountry("");
-    setOpCountries([]);
     // Managers / team leads belong to one project: drop the old project's pick.
     setEmployeeManagerId(null);
     setEmployeeTeamLeadId(null);
@@ -145,14 +147,24 @@ export function CreateEmployeeForm({
       password,
       role,
       country,
-      project_slug,
-      projectCountries,
+      project_slug: role === "op" ? (opMain?.project_slug ?? "") : project_slug,
+      projectCountries:
+        role === "op"
+          ? countriesForCreateProject(projects, opMain?.project_slug ?? "")
+          : projectCountries,
       supervisor_id,
       manager_id: employee_manager_id,
       team_lead_id: employee_team_lead_id,
       manager_countries,
       op_countries,
     });
+    const emptyOpProject = role === "op" ? opAccessEmptyProject(op_access) : null;
+    if (emptyOpProject) {
+      nextFieldErrors.op_countries = `Select at least one country in ${projectNameForSlug(
+        projects,
+        emptyOpProject.project_slug
+      )}, or untick that project.`;
+    }
     setFieldErrors(nextFieldErrors);
     const firstError = firstCreateEmployeeError(nextFieldErrors);
     if (firstError) {
@@ -186,8 +198,12 @@ export function CreateEmployeeForm({
           manager_countries: role === "manager" ? manager_countries : undefined,
           region: role === "manager" && manager_region ? manager_region : undefined,
           op_countries: role === "op" ? op_countries : undefined,
-          project_slug:
-            showCountryFields || role === "op" ? project_slug : undefined,
+          op_projects: role === "op" ? opAccessToSave(op_access) : undefined,
+          project_slug: showCountryFields
+            ? project_slug
+            : role === "op"
+              ? opMain?.project_slug
+              : undefined,
           country:
             role === "manager"
               ? manager_countries[0] ?? ""
@@ -362,7 +378,7 @@ export function CreateEmployeeForm({
               setEmployeeTeamLeadId(null);
               setProjectSlug("");
               setCountry("");
-              setOpCountries([]);
+              setOpAccess([]);
               setManagerCountries([]);
               setFieldErrors({});
             }}
@@ -443,15 +459,19 @@ export function CreateEmployeeForm({
         {isOpRole ? (
           <OpAccessFields
             projects={projects}
-            projectSlug={project_slug}
-            selectedCountries={op_countries}
+            access={op_access}
             projectError={fieldErrors.project_slug}
             countriesError={fieldErrors.op_countries}
-            fieldClass={fieldClass}
-            invalidFieldClass={invalidFieldClass}
-            onProjectChange={handleProjectChange}
-            onToggleCountry={(option) => {
-              toggleOpCountry(option);
+            onToggleProject={(slug) => {
+              setOpAccess((prev) => toggleOpProject(prev, slug));
+              setFieldErrors((prev) => ({
+                ...prev,
+                project_slug: undefined,
+                op_countries: undefined,
+              }));
+            }}
+            onToggleCountry={(slug, option) => {
+              setOpAccess((prev) => toggleOpProjectCountry(prev, slug, option));
               setFieldErrors((prev) => ({
                 ...prev,
                 op_countries: undefined,

@@ -1,3 +1,4 @@
+import type { OpProjectAccessInput } from "@/types/admin";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -7,7 +8,7 @@ import {
   fetchActiveAccountCountsByPlatform,
   fetchAdminSupervisorOptions,
   fetchManagerCountriesForUser,
-  fetchOpCountriesForUser,
+  fetchOpProjectsForUser,
   fetchOpOptions,
   fetchTeamLeadOptions,
 } from "@/lib/admin-data";
@@ -74,8 +75,8 @@ export default async function AdminEmployeeDetailPage({
         ? fetchManagerCountriesForUser(id)
         : Promise.resolve([] as string[]),
       user.role === "op"
-        ? fetchOpCountriesForUser(id)
-        : Promise.resolve([] as string[]),
+        ? fetchOpProjectsForUser(id)
+        : Promise.resolve([] as OpProjectAccessInput[]),
       fetchEmployeeCreateProjectOptions(),
     ]);
   const counts =
@@ -98,7 +99,8 @@ export default async function AdminEmployeeDetailPage({
     op_id: user.op_id ?? null,
     manager_countries: managerCountries,
     op_project_slug: user.op_project_slug ?? "",
-    op_countries: opCountries,
+    op_countries: opCountries.flatMap((project) => project.countries),
+    op_projects: opCountries,
     current_level: user.current_level,
     country: user.country ?? "",
     region: user.region ?? "",

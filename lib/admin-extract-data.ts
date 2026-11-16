@@ -323,6 +323,25 @@ async function fetchTempAdminExtract(
   }));
 }
 
+/** Combine several extract passes (an OP with more than one project). */
+export function mergeAdminExtractResults(
+  results: AdminExtractResult[]
+): AdminExtractResult {
+  const seen = new Set<string>();
+  const rows: AdminExtractRow[] = [];
+  for (const result of results) {
+    for (const row of result.rows) {
+      const key = `${row.source}:${row.id}:${row.platform}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push(row);
+    }
+  }
+  if (rows.length === 0) return { rows: [], summary: EMPTY_SUMMARY };
+  const sorted = sortExtractRows(rows);
+  return { rows: sorted, summary: buildSummary(sorted) };
+}
+
 /** Query Africa/Europe temp accounts and/or ALPHAA legacy accounts. */
 export async function fetchAdminExtract(
   filters: AdminExtractFilters

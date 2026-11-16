@@ -69,9 +69,27 @@ export type EmployeeCreateProjectOption = {
 };
 
 /** Assigned Strategy project + countries an Operation Manager may view. */
+/** One project + countries for an Operation Manager, as forms send it. */
+export type OpProjectAccessInput = {
+  project_slug: string;
+  countries: string[];
+};
+
+/** One project an Operation Manager can access, with its allowed countries. */
+export type OpProjectAccess = {
+  projectSlug: string;
+  /** temp_users.region of people in this project. */
+  region: string;
+  countries: string[];
+};
+
 export type OpAccessScope = {
+  /** Every project the OP can access (first = main project). */
+  projects: OpProjectAccess[];
+  /** Main project (first of `projects`). */
   projectSlug: string;
   region: string;
+  /** All allowed countries across projects. */
   countries: string[];
 };
 
@@ -88,6 +106,8 @@ export type CreateEmployeePayload = {
   manager_countries?: string[];
   /** Required when role is op — countries within project_slug. */
   op_countries?: string[];
+  /** Operation Manager: every project with its countries (first = main). */
+  op_projects?: OpProjectAccessInput[];
   hire_date?: string;
   current_level?: number;
   country: string;
@@ -131,14 +151,12 @@ export type ValidateCreateEmployeeInput = {
 
 export type OpAccessFieldsProps = {
   projects: EmployeeCreateProjectOption[];
-  projectSlug: string;
-  selectedCountries: string[];
+  /** Projects picked for this OP (first = main), each with its countries. */
+  access: OpProjectAccessInput[];
   projectError?: string;
   countriesError?: string;
-  fieldClass: string;
-  invalidFieldClass: string;
-  onProjectChange: (slug: string) => void;
-  onToggleCountry: (country: string) => void;
+  onToggleProject: (slug: string) => void;
+  onToggleCountry: (slug: string, country: string) => void;
 };
 
 export type CreateEmployeeFormProps = {
@@ -181,6 +199,8 @@ export type UpdateEmployeeProfilePayload = {
   project_slug?: string;
   /** Required when role is op — countries within project_slug. */
   op_countries?: string[];
+  /** Operation Manager: every project with its countries (first = main). */
+  op_projects?: OpProjectAccessInput[];
   country: string;
   /** Project region chosen when the country is in more than one project. */
   region?: string;
@@ -317,6 +337,8 @@ export type EmployeeFormInitial = {
   op_project_slug: string;
   /** Countries this Operation Manager can access within the project. */
   op_countries: string[];
+  /** Every project this Operation Manager can access, with its countries. */
+  op_projects: OpProjectAccessInput[];
   current_level: number;
   country: string;
   /** Saved project region (temp_users.region). */

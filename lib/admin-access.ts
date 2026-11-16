@@ -184,7 +184,7 @@ export async function requireAdminViewer(): Promise<AdminViewer> {
   return {
     userId,
     role: "op",
-    scope: scope ?? { projectSlug: "", region: "Africa", countries: [] },
+    scope: scope ?? { projects: [], projectSlug: "", region: "Africa", countries: [] },
     permissions,
     ...flags,
   };
