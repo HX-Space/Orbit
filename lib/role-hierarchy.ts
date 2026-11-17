@@ -147,12 +147,8 @@ export function reportingValidationMessage(
   userRole: Role,
   fields: ReportingFields
 ): string | null {
-  if (userRole === "employee") {
-    if (!fields.manager_id) {
-      return `Select a ${ROLE_LABELS.manager}.`;
-    }
-    return null;
-  }
+  // Employees may be created without a Country Manager (assign one later).
+  if (userRole === "employee") return null;
 
   if (!supervisorRequired(userRole)) return null;
 

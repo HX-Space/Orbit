@@ -84,21 +84,21 @@ export function EmployeeReportingFields({
   return (
     <>
       <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-[var(--color-muted)]">
-        {ROLE_LABELS.manager}
+        {ROLE_LABELS.manager} (optional)
         <select
           disabled={disabled}
           value={value.managerId ?? ""}
           onChange={(e) =>
             handleManagerChange(e.target.value ? Number(e.target.value) : null)
           }
-          aria-label={`Assign ${ROLE_LABELS.manager}`}
+          aria-label={`Assign ${ROLE_LABELS.manager} (optional)`}
           aria-invalid={Boolean(managerError)}
           aria-describedby={managerError ? managerErrorId : undefined}
           className={`cursor-pointer rounded outline-none ${fieldClass} ${
             managerError ? invalidFieldClass : ""
           } disabled:cursor-not-allowed disabled:opacity-50`}
         >
-          <option value="">{`Select ${ROLE_LABELS.manager}`}</option>
+          <option value="">{`No ${ROLE_LABELS.manager}`}</option>
           {managerOptions.map((manager) => (
             <option key={manager.id} value={manager.id}>
               {managerLabel(manager.full_name, manager.countries)}
