@@ -35,7 +35,7 @@ export function AdminHeaderSpareButton({
         layout
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="relative inline-flex h-16 cursor-pointer items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[var(--color-muted)] outline-none hover:text-[var(--color-ink)] focus-visible:ring-2 focus-visible:ring-[var(--color-emerald)]"
+        className="relative inline-flex h-full shrink-0 cursor-pointer items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[var(--color-muted)] outline-none hover:text-[var(--color-ink)] focus-visible:ring-2 focus-visible:ring-[var(--color-emerald)]"
       >
         Spare
         {count > 0 ? (
