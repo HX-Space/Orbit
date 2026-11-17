@@ -167,6 +167,8 @@ export function EmployeeForm({
 
   function changeCountry(country: string) {
     setForm((f) => {
+      // No country yet: keep the project as it is.
+      if (!country) return { ...f, country };
       const regions = setupRegionsForCountry(country, projects);
       const region = regions.some((r) => r === f.region)
         ? f.region
@@ -396,12 +398,13 @@ export function EmployeeForm({
 
         {showCountryFields ? (
           <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-[var(--color-muted)]">
-            Country
+            {form.role === "employee" ? "Country (optional)" : "Country"}
             <AdminCountrySelect
               value={form.country}
               onChange={changeCountry}
               countries={form.region ? projectCountries : undefined}
               ariaLabel="Employee country"
+              emptyLabel={form.role === "employee" ? "No country yet" : undefined}
             />
           </label>
         ) : null}

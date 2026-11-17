@@ -17,6 +17,8 @@ type Props = {
   invalidFieldClass: string;
   onProjectChange: (slug: string) => void;
   onCountryChange: (country: string) => void;
+  /** Employees may be saved without a country; their OP picks it later. */
+  countryOptional?: boolean;
 };
 
 export function CreateEmployeeProjectFields({
@@ -30,6 +32,7 @@ export function CreateEmployeeProjectFields({
   invalidFieldClass,
   onProjectChange,
   onCountryChange,
+  countryOptional = false,
 }: Props) {
   const assignedRegion = projectSlug
     ? regionDisplayLabel(regionFromStrategyProjectSlug(projectSlug, projects))
@@ -81,8 +84,9 @@ export function CreateEmployeeProjectFields({
       </label>
 
       <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-[var(--color-muted)] sm:col-span-2">
-        Country / sub-project
+        {countryOptional ? "Country / sub-project (optional)" : "Country / sub-project"}
         <AdminCountrySelect
+          emptyLabel={countryOptional ? "No country yet (the OP assigns it)" : undefined}
           value={country}
           countries={projectCountries}
           disabled={!projectSlug || projectCountries.length === 0}

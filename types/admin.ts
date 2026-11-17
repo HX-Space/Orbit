@@ -879,6 +879,8 @@ export type AdminCountrySelectProps = {
   ariaInvalid?: boolean;
   ariaDescribedBy?: string;
   invalid?: boolean;
+  /** When set, the list starts with this choice to leave the country empty. */
+  emptyLabel?: string;
 };
 
 export type EmployeeStatusSelectProps = {

@@ -73,7 +73,7 @@ export function supervisorLabelForUserRole(userRole: Role): string | null {
 }
 
 export function supervisorRequired(userRole: Role): boolean {
-  if (userRole === "manager" || userRole === "employee") {
+  if (userRole === "manager" || userRole === "employee" || userRole === "team_lead") {
     return false;
   }
   return supervisorRoleFor(userRole) !== null;

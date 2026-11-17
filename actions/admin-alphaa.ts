@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireFullAdminActor } from "@/lib/admin-access";
+import { OUTSIDE_OP_SCOPE_ERROR, requireFullAdminActor } from "@/lib/admin-access";
 import { publicAdminMutationError } from "@/lib/admin-action-error";
 import {
   deleteAlphaaEmployeeRow,
@@ -15,7 +15,9 @@ import type { UpdateAlphaaEmployeePayload } from "@/types/admin";
 import type { AdminPermissionAction } from "@/types/permissions";
 
 async function requireAdmin(action: AdminPermissionAction = "canUpdate") {
-  const { userId: adminId } = await requireFullAdminActor("employees", action);
+  const { userId: adminId, scope } = await requireFullAdminActor("employees", action);
+  // Main project (ALPHAA) holders are never in an Operation Manager's scope.
+  if (scope) throw new Error(OUTSIDE_OP_SCOPE_ERROR);
   return { adminId };
 }
 
