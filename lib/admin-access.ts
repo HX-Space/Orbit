@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { queryOne } from "@/lib/db";
-import { fetchOpAccessScope } from "@/lib/op-scope";
+import { fetchOpAccessScope, opMayManageRole, opScopeIncludes } from "@/lib/op-scope";
 import {
   adminHrefForPage,
   ADMIN_NAV_PAGES,
@@ -40,6 +40,8 @@ export type AdminViewer = {
 export type FullAdminActor = {
   userId: number;
   role: "admin" | "hoo" | "op";
+  /** Set for Operation Managers: what they may change. */
+  scope: OpAccessScope | null;
 };
 
 export type StrategyAdminActor = {
@@ -115,7 +117,8 @@ function legacyAllows(
   action: AdminPermissionAction
 ): boolean {
   if (action === "canRead") return true;
-  if (role === "op") return false;
+  // OP: edit employees and their accounts in their scope (no create / delete).
+  if (role === "op") return page === "employees" && action === "canUpdate";
   if (page === "strategy") return role === "admin";
   if (page === "extract" || page === "activity") return false;
   return role === "admin" || role === "hoo";
@@ -227,6 +230,36 @@ export async function requirePagePermission(
   return viewer;
 }
 
+export const OUTSIDE_OP_SCOPE_ERROR =
+  "Unauthorized — this person is outside your projects and countries.";
+
+/** True when an Operation Manager may change this person (Admin / HOO: always). */
+export function opMayManagePerson(
+  scope: OpAccessScope | null,
+  person: { role: string | null; region: string | null; country: string | null }
+): boolean {
+  if (!scope) return true;
+  return opMayManageRole(person.role) && opScopeIncludes(scope, person.region, person.country);
+}
+
+/**
+ * Operation Managers may only change employees, team leads and CMs in their own
+ * projects and countries (or not yet given a country in their projects).
+ */
+export async function assertViewerMayManageUser(
+  scope: OpAccessScope | null,
+  userId: number
+): Promise<void> {
+  if (!scope) return;
+  const person = await queryOne<{ role: string; region: string | null; country: string | null }>(
+    `SELECT role, region, country FROM temp_users WHERE id = $1`,
+    [userId]
+  );
+  if (!person || !opMayManagePerson(scope, person)) {
+    throw new Error(OUTSIDE_OP_SCOPE_ERROR);
+  }
+}
+
 /**
  * Page-scoped mutation gate (employees, spare, overview tools, etc.).
  */
@@ -235,7 +268,7 @@ export async function requireFullAdminActor(
   action: AdminPermissionAction = "canUpdate"
 ): Promise<FullAdminActor> {
   const viewer = await requirePagePermission(page, action);
-  return { userId: viewer.userId, role: viewer.role };
+  return { userId: viewer.userId, role: viewer.role, scope: viewer.scope };
 }
 
 /** Admin role only — managing another user's permission matrix. */

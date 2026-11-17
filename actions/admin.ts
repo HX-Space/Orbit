@@ -5,7 +5,12 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import type { PoolClient } from "pg";
 import type { OpProjectAccess } from "@/types/admin";
-import { requireFullAdminActor } from "@/lib/admin-access";
+import {
+  assertViewerMayManageUser,
+  opMayManagePerson,
+  OUTSIDE_OP_SCOPE_ERROR,
+  requireFullAdminActor,
+} from "@/lib/admin-access";
 import type { AdminPermissionAction } from "@/types/permissions";
 import { pool, queryOne } from "@/lib/db";
 import { getTodayCairoDate, normalizePgDateColumn } from "@/lib/cairo-date";
@@ -52,11 +57,11 @@ const setupCountrySchema = z
 async function requireAdminSession(
   action: AdminPermissionAction = "canUpdate"
 ) {
-  const { userId: adminId, role: actorRole } = await requireFullAdminActor(
+  const { userId: adminId, role: actorRole, scope } = await requireFullAdminActor(
     "employees",
     action
   );
-  return { adminId, actorRole };
+  return { adminId, actorRole, scope };
 }
 
 const ADMIN_ROLE_ONLY_ERROR =
@@ -84,10 +89,16 @@ async function currentRoleOf(user_id: number): Promise<string | null> {
   return row?.role ?? null;
 }
 
-async function assertMayChangeUser(actorRole: string, user_id: number) {
+async function assertMayChangeUser(
+  actorRole: string,
+  user_id: number,
+  scope: Parameters<typeof assertViewerMayManageUser>[0]
+) {
   if (adminRoleChangeBlocked(actorRole, await currentRoleOf(user_id))) {
     throw new Error(ADMIN_ROLE_ONLY_ERROR);
   }
+  // Operation Managers: only people in their own projects and countries.
+  await assertViewerMayManageUser(scope, user_id);
 }
 
 function revalidateAdminEmployee(userId: number) {
@@ -204,7 +215,8 @@ const createEmployeeSchema = z
         message: "Select a project.",
       });
     }
-    if (!country) {
+    // Employees may be created with a project only; their OP picks the country.
+    if (!country && role !== "employee") {
       ctx.addIssue({
         code: "custom",
         path: ["country"],
@@ -265,7 +277,7 @@ export async function createEmployee(
 ): Promise<CreateEmployeeResult> {
   let client: PoolClient | undefined;
   try {
-    const { actorRole } = await requireAdminSession("canCreate");
+    const { actorRole, scope } = await requireAdminSession("canCreate");
     const parsed = createEmployeeSchema.safeParse(payload);
     if (!parsed.success) {
       return { error: publicAdminMutationError(parsed.error) };
@@ -331,10 +343,19 @@ export async function createEmployee(
         return { error: "Select a valid project." };
       }
       const projectCountries = countriesForCreateProject(projects, projectSlug);
-      if (!projectCountries.includes(primaryCountry)) {
+      if (primaryCountry && !projectCountries.includes(primaryCountry)) {
         return { error: "Select a country from this project." };
       }
       assignedRegion = regionFromStrategyProjectSlug(projectSlug, projects);
+    }
+
+    if (
+      scope &&
+      !(role === "manager" ? managerCountries : [primaryCountry]).every((country) =>
+        opMayManagePerson(scope, { role, region: assignedRegion, country })
+      )
+    ) {
+      return { error: OUTSIDE_OP_SCOPE_ERROR };
     }
 
     client = await pool.connect();
@@ -515,6 +536,8 @@ const updateProfileSchema = z
       return;
     }
     if (!data.country) {
+      // Employees may wait for an OP to give them a country.
+      if (data.role === "employee") return;
       ctx.addIssue({
         code: "custom",
         path: ["country"],
@@ -535,12 +558,13 @@ export async function updateEmployeeProfile(
   user_id: number,
   payload: UpdateEmployeeProfilePayload
 ): Promise<void> {
-  const { actorRole } = await requireAdminSession();
+  const { actorRole, scope } = await requireAdminSession();
   if (!Number.isFinite(user_id)) throw new Error("Invalid user.");
   const p = updateProfileSchema.parse(payload);
   if (adminRoleChangeBlocked(actorRole, await currentRoleOf(user_id), p.role)) {
     throw new Error(ADMIN_ROLE_ONLY_ERROR);
   }
+  await assertViewerMayManageUser(scope, user_id);
 
   let managerCountries: string[] = [];
   let opCountries: string[] = [];
@@ -598,11 +622,24 @@ export async function updateEmployeeProfile(
         [user_id]
       );
       const currentRegion = current.rows[0]?.region?.trim() ?? "";
-      if (p.region && fits(p.region)) {
+      if (p.role === "employee" && !primaryCountry) {
+        // No country yet: keep the project picked (or the current one).
+        const picked = p.region?.trim() ?? "";
+        assignedRegion = picked || currentRegion || assignedRegion;
+      } else if (p.region && fits(p.region)) {
         assignedRegion = p.region;
       } else if (currentRegion && fits(currentRegion)) {
         assignedRegion = currentRegion as typeof assignedRegion;
       }
+    }
+
+    // Operation Managers keep the person inside their own projects and countries.
+    if (scope) {
+      const countries = p.role === "manager" ? managerCountries : [primaryCountry];
+      const allowed = countries.every((country) =>
+        opMayManagePerson(scope, { role: p.role, region: assignedRegion, country })
+      );
+      if (!allowed) throw new Error(OUTSIDE_OP_SCOPE_ERROR);
     }
 
     const reportingInput = normalizeReportingForRole(p.role, {
@@ -692,9 +729,9 @@ export async function setEmployeeActive(
   user_id: number,
   is_active: boolean
 ): Promise<void> {
-  const { actorRole } = await requireAdminSession();
+  const { actorRole, scope } = await requireAdminSession();
   if (!Number.isFinite(user_id)) throw new Error("Invalid user.");
-  await assertMayChangeUser(actorRole, user_id);
+  await assertMayChangeUser(actorRole, user_id, scope);
 
   await pool.query(`UPDATE temp_users SET is_active = $2 WHERE id = $1`, [
     user_id,
@@ -713,9 +750,9 @@ export async function setEmployeeEmploymentStatus(
   user_id: number,
   employment_status: "active" | "on_hold" | "deactivated"
 ): Promise<void> {
-  const { actorRole } = await requireAdminSession();
+  const { actorRole, scope } = await requireAdminSession();
   if (!Number.isFinite(user_id)) throw new Error("Invalid user.");
-  await assertMayChangeUser(actorRole, user_id);
+  await assertMayChangeUser(actorRole, user_id, scope);
 
   const parsed = z.enum(["active", "on_hold", "deactivated"]).safeParse(employment_status);
   if (!parsed.success) throw new Error("Invalid status.");
@@ -743,9 +780,9 @@ export async function resetEmployeePassword(
   user_id: number,
   password: string
 ): Promise<void> {
-  const { actorRole } = await requireAdminSession();
+  const { actorRole, scope } = await requireAdminSession();
   if (!Number.isFinite(user_id)) throw new Error("Invalid user.");
-  await assertMayChangeUser(actorRole, user_id);
+  await assertMayChangeUser(actorRole, user_id, scope);
 
   const parsed = resetPasswordSchema.safeParse(password);
   if (!parsed.success) {
@@ -779,9 +816,9 @@ export async function setEmployeeCode(
   user_id: number,
   employee_code: string | null
 ): Promise<void> {
-  const { actorRole } = await requireAdminSession();
+  const { actorRole, scope } = await requireAdminSession();
   if (!Number.isFinite(user_id)) throw new Error("Invalid user.");
-  await assertMayChangeUser(actorRole, user_id);
+  await assertMayChangeUser(actorRole, user_id, scope);
 
   const parsed = z
     .union([z.string(), z.null()])
@@ -826,8 +863,9 @@ export async function getAdminEmployeeAccounts(
 }
 
 export async function deleteEmployee(user_id: number): Promise<void> {
-  const { adminId, actorRole } = await requireAdminSession("canDelete");
+  const { adminId, actorRole, scope } = await requireAdminSession("canDelete");
   if (!Number.isFinite(user_id)) throw new Error("Invalid user.");
+  await assertViewerMayManageUser(scope, user_id);
   if (user_id === adminId) {
     throw new Error("You cannot delete your own account.");
   }
@@ -878,8 +916,9 @@ export async function updateEmployeeTargets(
   user_id: number,
   targets: UpdateEmployeeTargetsPayload
 ): Promise<void> {
-  const { adminId } = await requireAdminSession();
+  const { adminId, scope } = await requireAdminSession();
   if (!Number.isFinite(user_id)) throw new Error("Invalid user.");
+  await assertViewerMayManageUser(scope, user_id);
   const t = targetsSchema.parse(targets);
 
   await pool.query(

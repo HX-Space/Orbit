@@ -103,6 +103,10 @@ export default async function AdminEmployeesPage({
     listed = listed.filter((row) => {
       // Operation Managers don't see themselves in their own team list.
       if (row.source === "temp" && row.id === viewer.userId) return false;
+      // No country yet (created by the HOO): every OP of that project sees them.
+      if (row.role === "employee" && row.source === "temp" && !row.country?.trim()) {
+        return opScopeIncludes(scope, row.region, "");
+      }
       const base = baseCountryFromDisplay(row.country ?? "");
       if (!allowed.has(base) && !(row.country && allowed.has(row.country))) {
         return false;

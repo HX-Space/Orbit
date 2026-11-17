@@ -16,6 +16,7 @@ export function AdminCountrySelect({
   ariaInvalid,
   ariaDescribedBy,
   invalid = false,
+  emptyLabel,
 }: AdminCountrySelectProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -81,7 +82,7 @@ export function AdminCountrySelect({
             <CountryFlag country={selected} title={selected} className="h-4 w-6" />
           ) : null}
           <span className={selected ? "truncate" : "truncate text-[var(--color-muted)]"}>
-            {selected || "Select a country"}
+            {selected || emptyLabel || "Select a country"}
           </span>
         </span>
         <ChevronDown
@@ -99,6 +100,19 @@ export function AdminCountrySelect({
           aria-label="Countries"
           className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface)] py-1 shadow-lg"
         >
+          {emptyLabel ? (
+            <li role="option" aria-selected={!selected}>
+              <button
+                type="button"
+                onClick={() => choose("")}
+                className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[13px] font-medium outline-none hover:bg-[var(--color-cream-tint)] focus-visible:bg-[var(--color-cream-tint)] ${
+                  !selected ? "text-[var(--color-emerald)]" : "text-[var(--color-muted)]"
+                }`}
+              >
+                {emptyLabel}
+              </button>
+            </li>
+          ) : null}
           {options.map((country) => {
             const isSelected = country === selected;
             return (

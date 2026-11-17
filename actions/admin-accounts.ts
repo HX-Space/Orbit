@@ -1,7 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireFullAdminActor } from "@/lib/admin-access";
+import {
+  assertViewerMayManageUser,
+  OUTSIDE_OP_SCOPE_ERROR,
+  requireFullAdminActor,
+} from "@/lib/admin-access";
 import { pool, queryOne } from "@/lib/db";
 import { publicAdminMutationError } from "@/lib/admin-action-error";
 import { normalizeSocialAccountInput } from "@/lib/account-scope";
@@ -24,8 +28,18 @@ import type {
 } from "@/types/admin";
 import type { AdminPermissionAction } from "@/types/permissions";
 
-async function requireAdmin(action: AdminPermissionAction = "canUpdate") {
-  await requireFullAdminActor("employees", action);
+/**
+ * Adding or editing an account is an employee update (OPs may do it); deleting
+ * needs delete. Operation Managers: only their own projects' people, never
+ * the Main project's (ALPHAA) holders.
+ */
+async function requireAdmin(
+  action: AdminPermissionAction = "canUpdate",
+  source: AdminEmployeeSource = "temp"
+) {
+  const { scope } = await requireFullAdminActor("employees", action);
+  if (scope && source === "alphaa") throw new Error(OUTSIDE_OP_SCOPE_ERROR);
+  return scope;
 }
 
 async function requireSpareAdmin() {
@@ -65,8 +79,9 @@ export async function createAdminSocialAccount(
   source: AdminEmployeeSource = "temp"
 ): Promise<AdminAccountMutationResult> {
   try {
-    await requireAdmin("canCreate");
+    const scope = await requireAdmin("canUpdate", source);
     if (!Number.isFinite(userId)) return { error: "Invalid employee." };
+    await assertViewerMayManageUser(scope, userId);
     const checked = validateSocialAccountInput(
       source === "alphaa" ? withAlphaaEmailPassword(payload) : payload
     );
@@ -135,8 +150,16 @@ export async function updateAdminSocialAccount(
   source: AdminEmployeeSource = "temp"
 ): Promise<AdminAccountMutationResult> {
   try {
-    await requireAdmin();
+    const scope = await requireAdmin("canUpdate", source);
     if (!Number.isFinite(accountId)) return { error: "Invalid account." };
+    if (scope) {
+      const owner = await queryOne<{ user_id: number }>(
+        `SELECT user_id FROM temp_social_media_accounts WHERE id = $1`,
+        [accountId]
+      );
+      if (!owner) return { error: "Account not found." };
+      await assertViewerMayManageUser(scope, owner.user_id);
+    }
     const checked = validateSocialAccountInput(
       source === "alphaa" ? withAlphaaEmailPassword(payload) : payload
     );
@@ -228,8 +251,16 @@ export async function deleteAdminSocialAccount(
   source: AdminEmployeeSource = "temp"
 ): Promise<AdminAccountMutationResult> {
   try {
-    await requireAdmin("canDelete");
+    const scope = await requireAdmin("canDelete", source);
     if (!Number.isFinite(accountId)) return { error: "Invalid account." };
+    if (scope) {
+      const owner = await queryOne<{ user_id: number }>(
+        `SELECT user_id FROM temp_social_media_accounts WHERE id = $1`,
+        [accountId]
+      );
+      if (!owner) return { error: "Account not found." };
+      await assertViewerMayManageUser(scope, owner.user_id);
+    }
     if (source === "alphaa") {
       const existing = await queryOne<{ user_id: number }>(
         `SELECT user_id FROM temp_social_media_accounts WHERE id = $1`,

@@ -65,15 +65,15 @@ export function SupervisorAssignField({
   const baseLabel = supervisorLabelForUserRole(userRole);
   if (!baseLabel) return null;
 
-  const label =
-    userRole === "manager" ? `${baseLabel} (optional)` : baseLabel;
+  const optional = userRole === "manager" || userRole === "team_lead";
+  const label = optional ? `${baseLabel} (optional)` : baseLabel;
   const options = optionsForRole(userRole, teamLeads, managers, ops, admins, {
     region,
     country,
     selectedId: value,
   });
   const emptyOptionLabel =
-    userRole === "manager" ? `No ${baseLabel}` : `Select ${baseLabel}`;
+    optional ? `No ${baseLabel}` : `Select ${baseLabel}`;
 
   return (
     <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-[var(--color-muted)]">

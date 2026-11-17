@@ -49,7 +49,8 @@ export function validateCreateEmployeeForm(
       errors.project_slug = "Select a project.";
     }
     if (!input.country.trim()) {
-      errors.country = "Select a country.";
+      // Employees may be created with a project only; their OP picks the country.
+      if (input.role !== "employee") errors.country = "Select a country.";
     } else if (
       input.projectCountries.length > 0 &&
       !input.projectCountries.includes(input.country.trim())

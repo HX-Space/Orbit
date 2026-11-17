@@ -216,9 +216,22 @@ export function CreateEmployeeForm({
           toast.error(result.error);
           return;
         }
-        const { id } = result;
         toast.success(`${ROLE_LABELS[role]} created.`);
-        router.push(`/admin/employees/${id}`);
+        // Stay on Add employee with a clean form for the next one.
+        setFullName("");
+        setEmail("");
+        setPassword("");
+        setPhone("");
+        setRole("employee");
+        setSupervisorId("");
+        setEmployeeManagerId(null);
+        setEmployeeTeamLeadId(null);
+        setManagerCountries([]);
+        setManagerRegion("");
+        setOpAccess([]);
+        setProjectSlug("");
+        setCountry("");
+        setFieldErrors({});
         router.refresh();
       } catch (e) {
         const message =
@@ -346,6 +359,7 @@ export function CreateEmployeeForm({
             projectCountries={projectCountries}
             projectError={fieldErrors.project_slug}
             countryError={fieldErrors.country}
+            countryOptional={role === "employee"}
             fieldClass={fieldClass}
             invalidFieldClass={invalidFieldClass}
             onProjectChange={handleProjectChange}

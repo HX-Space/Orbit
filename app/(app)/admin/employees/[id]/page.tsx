@@ -2,7 +2,7 @@ import type { OpProjectAccessInput } from "@/types/admin";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { requireAdminPageAccess } from "@/lib/admin-access";
+import { opMayManagePerson, requireAdminPageAccess } from "@/lib/admin-access";
 import { queryOne } from "@/lib/db";
 import {
   fetchActiveAccountCountsByPlatform,
@@ -50,7 +50,7 @@ export default async function AdminEmployeeDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<SearchParams>;
 }) {
-  await requireAdminPageAccess("employees");
+  const viewer = await requireAdminPageAccess("employees");
 
   const { id: idRaw } = await params;
   const id = Number(idRaw);
@@ -64,6 +64,8 @@ export default async function AdminEmployeeDetailPage({
 
   const user = await queryOne<TempUser>(`SELECT * FROM temp_users WHERE id = $1`, [id]);
   if (!user) notFound();
+  // Operation Managers: only people in their own projects and countries.
+  if (!opMayManagePerson(viewer.scope, user)) notFound();
 
   const [teamLeads, managers, ops, admins, managerCountries, opCountries, projects] =
     await Promise.all([

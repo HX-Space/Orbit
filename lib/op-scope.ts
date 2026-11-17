@@ -95,6 +95,7 @@ function regionKey(value: string | null | undefined) {
 /**
  * True when a person (project + country) is inside one of the OP's projects.
  * A blank project only needs the country (old rows without a project).
+ * A blank country is in scope for every OP of that project.
  */
 export function opScopeIncludes(
   scope: OpAccessScope | null | undefined,
@@ -102,9 +103,12 @@ export function opScopeIncludes(
   country: string | null | undefined
 ): boolean {
   if (!scope) return true;
-  if (!country) return false;
-  const base = baseCountryFromDisplay(country);
   const key = regionKey(region);
+  // No country yet (handed over by the HOO): any OP of that project.
+  if (!country?.trim()) {
+    return Boolean(key) && scope.projects.some((project) => regionKey(project.region) === key);
+  }
+  const base = baseCountryFromDisplay(country);
   return scope.projects.some(
     (project) =>
       (!key || regionKey(project.region) === key) &&
@@ -129,8 +133,33 @@ export function opScopeSql(
       const countries = `$${values.length}::text[]`;
       values.push(regionKey(project.region));
       const region = `$${values.length}::text`;
-      return `(${countryColumn} = ANY(${countries})
-        AND (${regionKeySql(regionColumn)} = ${region} OR ${regionKeySql(regionColumn)} = ''))`;
+      return `((${countryColumn} = ANY(${countries})
+        AND (${regionKeySql(regionColumn)} = ${region} OR ${regionKeySql(regionColumn)} = ''))
+        OR (COALESCE(TRIM(${countryColumn}), '') = '' AND ${regionKeySql(regionColumn)} = ${region}))`;
     });
   return parts.length > 0 ? `(${parts.join(" OR ")})` : "FALSE";
+}
+
+/** Roles an Operation Manager may manage (never OPs, HOO or Admins). */
+export const OP_MANAGEABLE_ROLES = ["employee", "team_lead", "manager"] as const;
+
+export function opMayManageRole(role: string | null | undefined): boolean {
+  return (OP_MANAGEABLE_ROLES as readonly string[]).includes(role ?? "");
+}
+
+/** The project list cut down to the OP's own projects and countries. */
+export function opScopedProjectOptions<
+  T extends { slug: string; countries: string[] },
+>(projects: T[], scope: OpAccessScope | null | undefined): T[] {
+  if (!scope) return projects;
+  return projects.flatMap((project) => {
+    const access = opScopeProject(scope, project.slug);
+    if (!access) return [];
+    return [
+      {
+        ...project,
+        countries: project.countries.filter((country) => access.countries.includes(country)),
+      },
+    ];
+  });
 }

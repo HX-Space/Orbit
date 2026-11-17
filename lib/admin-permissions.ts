@@ -97,7 +97,10 @@ function codeRoleDefault(
       canDelete: employees,
     };
   }
-  if (role === "op") return { ...EMPTY_CRUD, canRead: true };
+  if (role === "op") {
+    // Edit employees and their accounts in their own scope; HOO creates them.
+    return { ...EMPTY_CRUD, canRead: true, canUpdate: pageKey === "employees" };
+  }
   return EMPTY_CRUD;
 }
 
