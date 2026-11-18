@@ -111,14 +111,12 @@ export default async function AdminEmployeesPage({
       if (!allowed.has(base) && !(row.country && allowed.has(row.country))) {
         return false;
       }
-      // Employees: one of the OP's projects and that project's countries.
-      if (row.role === "employee") {
-        return (
-          Boolean(row.region?.trim()) &&
-          opScopeIncludes(scope, row.region, row.country)
-        );
-      }
-      return true;
+      // Every role: one of the OP's projects, not just the country. Sudan is in
+      // both Africa and Main, so an Africa OP must not see Main's Sudan people.
+      if (row.role === "employee" && !row.region?.trim()) return false;
+      const region = row.region ?? (row.source === "alphaa" ? "Alphaa" : null);
+      const countries = row.countries?.length ? row.countries : [row.country ?? ""];
+      return countries.some((item) => opScopeIncludes(scope, region, item));
     });
   }
 

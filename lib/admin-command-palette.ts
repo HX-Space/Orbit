@@ -40,6 +40,7 @@ export function commandPalettePeopleFromRows(
     roleLabel: adminRoleBadge(row.role),
     code: row.employee_code,
     country: row.country,
+    region: row.region ?? (row.source === "alphaa" ? "Alphaa" : null),
     accounts: (row.role === "employee" ? accountsByUser.get(row.id) ?? [] : []).map((account) => ({
       name:
         account.account_name ||

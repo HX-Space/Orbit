@@ -27,7 +27,7 @@ export async function loadAdminLogsPage(
   const raw = await fetchAdminActionLogs(safeFilters, before);
   const last = raw[raw.length - 1];
   return {
-    rows: scopeLogsForViewer(raw, viewer.role === "op" ? viewer.scope : null),
+    rows: await scopeLogsForViewer(raw, viewer.role === "op" ? viewer.scope : null),
     nextCursor:
       raw.length === LOG_PAGE_SIZE && last
         ? { createdAt: last.createdAt, id: last.id }

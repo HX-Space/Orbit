@@ -86,6 +86,8 @@ export type CommandPalettePerson = {
   roleLabel: string;
   code: string | null;
   country: string | null;
+  /** The person's project (e.g. Africa, Alphaa); used to scope OP search. */
+  region?: string | null;
   accounts: CommandPalettePersonAccount[];
 };
 
