@@ -11,7 +11,7 @@ export function AdminHeaderNavItem({ link, active }: AdminHeaderNavItemProps) {
       aria-label={`Open ${link.label}`}
       aria-current={active ? "page" : undefined}
       className={[
-        "relative inline-flex h-16 shrink-0 cursor-pointer items-center rounded-lg px-3 text-[14px] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-emerald)]",
+        "relative inline-flex h-full shrink-0 cursor-pointer items-center rounded-lg px-3 text-[14px] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-emerald)]",
         active
           ? "font-semibold text-[var(--color-ink)]"
           : "font-medium text-[var(--color-muted)] hover:text-[var(--color-ink)]",

@@ -73,16 +73,27 @@ export async function AppHeader({
     : [];
 
   return (
-    <header className="relative isolate z-50 h-16 border-b border-[var(--color-hairline)] bg-[var(--color-surface)]">
+    <header
+      className={`relative isolate z-50 border-b border-[var(--color-hairline)] bg-[var(--color-surface)] ${
+        isAdminWorkspace ? "xl:h-16" : "h-16"
+      }`}
+    >
       <div
         className={[
-          "mx-auto flex h-full w-full items-center justify-between gap-3 px-4 sm:px-8",
+          // Admin: below xl the section links drop to their own scrollable row.
+          isAdminWorkspace
+            ? "mx-auto flex w-full flex-wrap items-center justify-between gap-x-3 px-4 sm:px-8 xl:h-full xl:flex-nowrap"
+            : "mx-auto flex h-full w-full items-center justify-between gap-3 px-4 sm:px-8",
           isAdminWorkspace || role === "manager"
             ? "max-w-[1600px]"
             : "max-w-7xl",
         ].join(" ")}
       >
-        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+        <div
+          className={`flex min-w-0 items-center gap-2 sm:gap-4 ${
+            isAdminWorkspace ? "h-16 xl:h-full" : ""
+          }`}
+        >
           <Link
             href="/"
             aria-label="Orbit home"
@@ -90,21 +101,25 @@ export async function AppHeader({
           >
             <BrandLogo size="header" priority />
           </Link>
-          {isAdminWorkspace ? (
+        </div>
+
+        {isAdminWorkspace ? (
+          <div className="order-last flex h-12 w-full min-w-0 border-t border-[var(--color-hairline)] xl:order-none xl:h-full xl:w-auto xl:flex-1 xl:border-t-0 xl:pl-1">
             <AdminHeaderNav
               spareCount={spareAccounts.length}
               spareAccounts={spareAccounts}
               spareHolders={spareHolders}
               allowedPages={allowedPages}
             />
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {isAdminWorkspace ? (
             <HeaderSearch />
           ) : roleLabel ? (
-            <span className="rounded-full bg-[var(--color-emerald)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-white">
+            // Hidden on phones: it would cover the logo.
+            <span className="hidden rounded-full bg-[var(--color-emerald)] px-3 py-1 sm:inline text-[11px] font-semibold uppercase tracking-[0.06em] text-white">
               {roleLabel}
             </span>
           ) : null}

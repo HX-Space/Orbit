@@ -45,7 +45,7 @@ function MainScopeCoverageTable({
   const fixed = `${COVERAGE_HEAD_CELL} align-bottom`;
 
   return (
-    <div className="overflow-x-auto rounded-[16px] border border-[var(--color-hairline)] bg-[var(--color-surface)]">
+    <div className="relative overflow-x-auto rounded-[16px] border border-[var(--color-hairline)] bg-[var(--color-surface)]">
       <table className="w-full table-fixed border-collapse text-left" style={{ minWidth }}>
         <colgroup>
           <col className={COVERAGE_COL.country} />
@@ -131,7 +131,7 @@ export function AdminCountryCoverageTable({
   const minWidth = coverageTableMinWidth(showAlphaaPlatforms);
 
   return (
-    <div className="overflow-x-auto rounded-[16px] border border-[var(--color-hairline)] bg-[var(--color-surface)]">
+    <div className="relative overflow-x-auto rounded-[16px] border border-[var(--color-hairline)] bg-[var(--color-surface)]">
       <table
         className="w-full table-fixed border-collapse text-left"
         style={{ minWidth }}

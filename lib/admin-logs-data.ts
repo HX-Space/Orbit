@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
-import { baseCountryFromDisplay } from "@/lib/overview-country-display";
+import { opScopeIncludes } from "@/lib/op-scope";
+import type { OpAccessScope } from "@/types/admin";
 import {
   ORBIT_LOG_ACTIONS,
   ORBIT_LOG_RESOURCES,
@@ -75,18 +76,74 @@ export function parseOrbitLogFilters(params: {
   };
 }
 
-/** Operation Managers only see entries for their own project countries. */
-export function scopeLogsForViewer(
+function detailText(details: Record<string, unknown> | null, key: string): string {
+  const value = details?.[key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+/** The person an entry is about: userId / employeeId, or "Name (#12)" in holder / employee. */
+function logPersonId(details: Record<string, unknown> | null): number | null {
+  for (const key of ["userId", "employeeId"]) {
+    const value = Number(details?.[key]);
+    if (Number.isInteger(value) && value > 0) return value;
+  }
+  for (const key of ["holder", "employee"]) {
+    const match = /\(#(\d+)\)\s*$/.exec(detailText(details, key));
+    if (match) return Number(match[1]);
+  }
+  return null;
+}
+
+/** "Main" is how the Main project (Alphaa) is labelled in some entries. */
+function logProject(label: string): string {
+  return label.toLowerCase() === "main" ? "Alphaa" : label;
+}
+
+/**
+ * Operation Managers only see entries inside their own projects and countries.
+ * The person's project counts, not just the country: Sudan is in both Africa and
+ * Main, so an Africa OP doesn't see Main's Sudan activity.
+ */
+export async function scopeLogsForViewer(
   rows: OrbitActionLogRow[],
-  scope: { countries: string[] } | null
-): OrbitActionLogRow[] {
+  scope: OpAccessScope | null
+): Promise<OrbitActionLogRow[]> {
   if (!scope) return rows;
-  const allowed = new Set(scope.countries);
+
+  const ids = [
+    ...new Set(
+      rows
+        .filter((row) => detailText(row.details, "source") !== "alphaa")
+        .map((row) => logPersonId(row.details))
+        .filter((id): id is number => id !== null)
+    ),
+  ];
+  const people = new Map<number, { region: string | null; country: string | null }>();
+  if (ids.length > 0) {
+    const found = await query<{ id: number; region: string | null; country: string | null }>(
+      `SELECT id, region, country FROM temp_users WHERE id = ANY($1::int[])`,
+      [ids]
+    );
+    for (const person of found) people.set(person.id, person);
+  }
+
   return rows.filter((row) => {
-    const countryRaw = row.details?.country;
-    if (typeof countryRaw !== "string" || !countryRaw.trim()) return false;
-    const base = baseCountryFromDisplay(countryRaw);
-    return allowed.has(base) || allowed.has(countryRaw.trim());
+    const details = row.details;
+    const country = detailText(details, "country");
+    // Main project (ALPHAA) people: only for OPs who have the Main project.
+    if (detailText(details, "source") === "alphaa") {
+      return opScopeIncludes(scope, "Alphaa", country);
+    }
+    const id = logPersonId(details);
+    const person = id !== null ? people.get(id) : undefined;
+    if (person) return opScopeIncludes(scope, person.region, person.country);
+    // No person (Strategy, Fit to plan…): use the project the entry names.
+    const project = logProject(
+      detailText(details, "project") || detailText(details, "book") || detailText(details, "region")
+    );
+    if (project) return opScopeIncludes(scope, project, country);
+    if (!country || country === "—") return false;
+    return opScopeIncludes(scope, null, country);
   });
 }
 
