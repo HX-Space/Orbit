@@ -16,12 +16,14 @@ export async function POST() {
   }
 
   try {
-    const [africaEuropeAccounts, alphaaAccounts] = await Promise.all([
+    const [projectAccounts, alphaaAccounts] = await Promise.all([
       fetchAccountsForSheetsExport(),
       fetchAlphaaAccountsForSheetsExport(),
     ]);
-    const { africaCount, europeCount, balkanCount, alphaaCount, total } =
-      await syncAccountsToGoogleSheets(africaEuropeAccounts, alphaaAccounts);
+    const { africaCount, europeCount, balkanCount, asiaCount, alphaaCount, total } =
+      await syncAccountsToGoogleSheets(projectAccounts, alphaaAccounts);
+    // Accounts whose project has no tab (not Africa, Europe, Asia or Main).
+    const skippedCount = projectAccounts.skipped;
 
     const result: SheetsSyncResult = {
       success: true,
@@ -30,14 +32,16 @@ export async function POST() {
       africaCount,
       europeCount,
       balkanCount,
+      asiaCount,
       alphaaCount,
+      skippedCount,
     };
 
     await logOrbitAction({
       action: "sync",
       resource: "sheets",
       summary: `Synced ${total} accounts to Google Sheets`,
-      details: { africaCount, europeCount, balkanCount, alphaaCount, total },
+      details: { africaCount, europeCount, balkanCount, asiaCount, alphaaCount, skippedCount, total },
     });
 
     return NextResponse.json(result);

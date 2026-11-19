@@ -216,7 +216,7 @@ export async function assertManagerCanViewHolder(
       `SELECT country, region
          FROM temp_users
         WHERE id = $1
-          AND role = 'employee'
+          AND role IN ('employee', 'team_lead')
           AND is_active = TRUE`,
       [holderId]
     );

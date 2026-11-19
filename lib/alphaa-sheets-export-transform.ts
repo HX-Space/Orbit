@@ -144,7 +144,8 @@ export function alphaaSheetsExportValuesFromRow(
     account.acc_email,
     account.acc_password_hash,
     account.acc_mobile,
-    "ALPHAA",
+    // Same "Details" value the old Social Media Tracker wrote.
+    "ALPHA",
     account.rss,
     account.dropbox,
   ];

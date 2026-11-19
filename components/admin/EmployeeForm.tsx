@@ -456,7 +456,10 @@ export function EmployeeForm({
             className={`cursor-pointer ${fieldClass}`}
           >
             <option value="employee">{ROLE_LABELS.employee}</option>
-            <option value="team_lead">{ROLE_LABELS.team_lead}</option>
+            {/* Team Leader Regional is no longer given; kept only for people who already have it. */}
+            {initial.role === "team_lead" ? (
+              <option value="team_lead">{ROLE_LABELS.team_lead}</option>
+            ) : null}
             <option value="manager">{ROLE_LABELS.manager}</option>
             <option value="op">{ROLE_LABELS.op}</option>
             <option value="hoo">{ROLE_LABELS.hoo}</option>

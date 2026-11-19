@@ -33,8 +33,14 @@ export function SyncSheetsButton({
       if (result.europeCount != null || result.balkanCount != null) {
         parts.push(`${result.europeCount ?? result.balkanCount} Europe`);
       }
+      if (result.asiaCount != null) {
+        parts.push(`${result.asiaCount} Asia`);
+      }
       if (result.alphaaCount != null) {
         parts.push(`${result.alphaaCount} ${MAIN_PROJECT_LABEL}`);
+      }
+      if (result.skippedCount) {
+        parts.push(`${result.skippedCount} skipped (project has no tab)`);
       }
       toast.success(
         parts.length > 0

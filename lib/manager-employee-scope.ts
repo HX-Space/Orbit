@@ -1,5 +1,6 @@
 /**
- * Which `temp_users` employees a Country Manager can see and edit.
+ * Which `temp_users` employees and Team Leaders a Country Manager can see and
+ * edit (Team Leaders hold accounts too).
  *
  * Matches planned coverage (employees in the manager's countries) while respecting
  * the reporting chain when it is set:
@@ -16,7 +17,7 @@ export function managerEmployeeScopeSql(
   countriesParam: string
 ): string {
   const e = employeeAlias;
-  return `${e}.role = 'employee'
+  return `${e}.role IN ('employee', 'team_lead')
     AND ${e}.is_active = TRUE
     AND ${e}.country = ANY(${countriesParam}::text[])
     AND ${sameProjectSql(

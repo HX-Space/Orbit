@@ -34,23 +34,8 @@ export function EmployeeReportingFields({
     return options;
   }, [country, region, managers, value.managerId]);
 
-  const teamLeadOptions = useMemo(() => {
-    const matching = value.managerId
-      ? teamLeads.filter(
-          (teamLead) =>
-            teamLead.manager_id == null || teamLead.manager_id === value.managerId
-        )
-      : teamLeads;
-    if (
-      value.teamLeadId &&
-      !matching.some((teamLead) => teamLead.id === value.teamLeadId)
-    ) {
-      const selected = teamLeads.find((teamLead) => teamLead.id === value.teamLeadId);
-      return selected ? [selected, ...matching] : matching;
-    }
-    return matching;
-  }, [teamLeads, value.managerId, value.teamLeadId]);
-
+  // The Team Leader picker was removed; an existing Team Leader link is kept,
+  // and cleared only when the new Country Manager isn't that Team Leader's.
   function handleManagerChange(nextManagerId: number | null) {
     const selectedTeamLead = teamLeads.find(
       (teamLead) => teamLead.id === value.teamLeadId
@@ -63,21 +48,6 @@ export function EmployeeReportingFields({
     onChange({
       managerId: nextManagerId,
       teamLeadId: teamLeadConflicts ? null : value.teamLeadId,
-    });
-  }
-
-  function handleTeamLeadChange(nextTeamLeadId: number | null) {
-    const selectedTeamLead = teamLeads.find(
-      (teamLead) => teamLead.id === nextTeamLeadId
-    );
-    const nextManagerId =
-      selectedTeamLead?.manager_id && selectedTeamLead.manager_id !== value.managerId
-        ? selectedTeamLead.manager_id
-        : value.managerId;
-
-    onChange({
-      managerId: nextManagerId,
-      teamLeadId: nextTeamLeadId,
     });
   }
 
@@ -113,25 +83,6 @@ export function EmployeeReportingFields({
             {managerError}
           </span>
         ) : null}
-      </label>
-      <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-[var(--color-muted)]">
-        {ROLE_LABELS.team_lead} (optional)
-        <select
-          disabled={disabled}
-          value={value.teamLeadId ?? ""}
-          onChange={(e) =>
-            handleTeamLeadChange(e.target.value ? Number(e.target.value) : null)
-          }
-          aria-label={`Assign ${ROLE_LABELS.team_lead} (optional)`}
-          className={`cursor-pointer rounded outline-none ${fieldClass} disabled:cursor-not-allowed disabled:opacity-50`}
-        >
-          <option value="">{`No ${ROLE_LABELS.team_lead}`}</option>
-          {teamLeadOptions.map((teamLead) => (
-            <option key={teamLead.id} value={teamLead.id}>
-              {teamLead.full_name}
-            </option>
-          ))}
-        </select>
       </label>
     </>
   );
