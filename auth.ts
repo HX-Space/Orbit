@@ -2,12 +2,12 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import { compare } from "bcryptjs";
-import { queryOne } from "@/lib/db";
+import { query, queryOne } from "@/lib/db";
 import { logOrbitAction } from "@/lib/orbit-log";
 import type { Role } from "@/types/db";
 
 const credentialsSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().email(),
   password: z.string().min(1),
 });
 
@@ -35,14 +35,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const { email, password } = parsed.data;
 
-        const user = await queryOne<DbUserAuthRow>(
+        // Emails match whatever the capitals or spaces (many are stored as
+        // "FirstLast@alpha.com"). If two people differ only by capitals, only
+        // the exact spelling signs in.
+        const matches = await query<DbUserAuthRow>(
           `SELECT id, full_name, email, password_hash, role
            FROM temp_users
-           WHERE email = $1
+           WHERE LOWER(TRIM(email)) = LOWER($1)
              AND is_active = TRUE
              AND employment_status <> 'deactivated'`,
           [email]
         );
+        const user =
+          matches.length === 1
+            ? matches[0]
+            : matches.find((row) => row.email.trim() === email);
         if (!user) return null;
 
         const ok = await compare(password, user.password_hash);

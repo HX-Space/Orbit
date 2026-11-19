@@ -31,7 +31,7 @@ export function groupAccountsByPlatform(
     instagram: [],
     tiktok: [],
   };
-  for (const a of accounts) grouped[a.platform].push(a);
+  for (const a of accounts) grouped[a.platform]?.push(a);
   return grouped;
 }
 
@@ -43,14 +43,24 @@ export function isEmployeeSetupComplete(input: {
   setupNeedsReview?: boolean;
 }): boolean {
   if (input.setupNeedsReview) return false;
-  const counts: SetupCompleteTargets = {
-    x: input.accountsByPlatform.x?.length ?? 0,
-    facebook_personal: input.accountsByPlatform.facebook_personal?.length ?? 0,
-    facebook_umbrella: input.accountsByPlatform.facebook_umbrella?.length ?? 0,
-    instagram: input.accountsByPlatform.instagram?.length ?? 0,
-    tiktok: input.accountsByPlatform.tiktok?.length ?? 0,
+  // Accounts must match the targets. Some targets include spare accounts and
+  // some don't (spares are extras on top of the plan), so either way passes.
+  const countAccounts = (withSpare: boolean): SetupCompleteTargets => {
+    const count = (platform: Platform) =>
+      (input.accountsByPlatform[platform] ?? []).filter(
+        (account) => withSpare || !account.is_spare
+      ).length;
+    return {
+      x: count("x"),
+      facebook_personal: count("facebook_personal"),
+      facebook_umbrella: count("facebook_umbrella"),
+      instagram: count("instagram"),
+      tiktok: count("tiktok"),
+    };
   };
-  const hasAllExact = accountsMeetTargets(counts, input.targets);
+  const hasAllExact =
+    accountsMeetTargets(countAccounts(true), input.targets) ||
+    accountsMeetTargets(countAccounts(false), input.targets);
   const hasProfile = isSetupProfileComplete({
     country: input.country,
     language: input.language,
