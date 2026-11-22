@@ -1366,7 +1366,10 @@ export type SheetsSyncResult = {
   europeCount?: number;
   /** @deprecated Use europeCount */
   balkanCount?: number;
+  asiaCount?: number;
   alphaaCount?: number;
+  /** Accounts whose project has no tab, so they were not written. */
+  skippedCount?: number;
 };
 
 export type SyncSheetsButtonProps = {

@@ -8,14 +8,14 @@ import {
   sheetsExportValuesFromRow,
   transformSheetsExportRow,
 } from "@/lib/sheets-export-transform";
-import { splitAccountsByExportRegion } from "@/lib/sheets-export-region";
+import type { SheetsExportTab } from "@/lib/sheets-export-region";
 import type { SetupRegion } from "@/lib/setup-options";
 import type {
   AlphaaSheetsExportAccountRow,
   SheetsExportAccountRow,
 } from "@/types/admin";
 
-/** Africa/Balkan — row 1 keeps template headers; data starts at row 2. */
+/** Africa/Europe/Asia — row 1 keeps template headers; data starts at row 2. */
 const STRATEGY_DATA_START_ROW = 2;
 const STRATEGY_MAX_DATA_ROW = 5000;
 
@@ -80,14 +80,17 @@ function getSheetsClient(credentials: GoogleSheetsCredentials) {
   return google.sheets({ version: "v4", auth });
 }
 
-/** Africa/Balkan strategy tabs — data only (headers live on the sheet template). */
+/** Africa/Europe/Asia strategy tabs — data only (headers live on the sheet template). */
 async function syncStrategyAccountsToSheetTab(
+  tab: SheetsExportTab,
   target: RegionSheetsTarget,
   accounts: SheetsExportAccountRow[],
   credentials: GoogleSheetsCredentials
 ) {
   const sheets = getSheetsClient(credentials);
-  const transformedAccounts = accounts.map(transformSheetsExportRow);
+  const transformedAccounts = accounts.map((account) =>
+    transformSheetsExportRow(account, tab)
+  );
   const values = transformedAccounts.map((account, index) =>
     sheetsExportValuesFromRow(account, index + 1)
   );
@@ -153,33 +156,41 @@ export type SheetsSyncSummary = {
   europeCount: number;
   /** @deprecated Use europeCount */
   balkanCount: number;
+  asiaCount: number;
   alphaaCount: number;
   total: number;
 };
 
-/** Sync Africa/Europe and ALPHAA tabs, all from temp accounts. */
+/** Say which tab failed (e.g. the Asia tab hasn't been created yet). */
+async function withTabName<T>(tabName: string, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`"${tabName}" tab: ${message}`);
+  }
+}
+
+/** Sync the Africa, Europe, Asia and Main (ALPHAA) tabs, each with its own project's accounts. */
 export async function syncAccountsToGoogleSheets(
-  africaEuropeAccounts: SheetsExportAccountRow[],
+  projectAccounts: Record<SheetsExportTab, SheetsExportAccountRow[]>,
   alphaaAccounts: AlphaaSheetsExportAccountRow[]
 ): Promise<SheetsSyncSummary> {
   const credentials = getGoogleSheetsCredentials();
-  const { africa, europe } = splitAccountsByExportRegion(africaEuropeAccounts);
+  const syncTab = (tab: SheetsExportTab) => {
+    const target = getRegionSheetsTarget(tab);
+    return withTabName(target.sheetTab, () =>
+      syncStrategyAccountsToSheetTab(tab, target, projectAccounts[tab], credentials)
+    );
+  };
+  const alphaaTarget = getRegionSheetsTarget("Alphaa");
 
-  const [africaCount, europeCount, alphaaCount] = await Promise.all([
-    syncStrategyAccountsToSheetTab(
-      getRegionSheetsTarget("Africa"),
-      africa,
-      credentials
-    ),
-    syncStrategyAccountsToSheetTab(
-      getRegionSheetsTarget("Europe"),
-      europe,
-      credentials
-    ),
-    syncAlphaaAccountsToSheetTab(
-      getRegionSheetsTarget("Alphaa"),
-      alphaaAccounts,
-      credentials
+  const [africaCount, europeCount, asiaCount, alphaaCount] = await Promise.all([
+    syncTab("Africa"),
+    syncTab("Europe"),
+    syncTab("Asia"),
+    withTabName(alphaaTarget.sheetTab, () =>
+      syncAlphaaAccountsToSheetTab(alphaaTarget, alphaaAccounts, credentials)
     ),
   ]);
 
@@ -187,7 +198,8 @@ export async function syncAccountsToGoogleSheets(
     africaCount,
     europeCount,
     balkanCount: europeCount,
+    asiaCount,
     alphaaCount,
-    total: africaCount + europeCount + alphaaCount,
+    total: africaCount + europeCount + asiaCount + alphaaCount,
   };
 }

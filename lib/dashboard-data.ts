@@ -112,7 +112,9 @@ function targetsFromUser(user: TempUser): Record<Platform, number> {
 
 function groupAccounts(accounts: TempSocialMediaAccount[]) {
   const grouped = emptyAccountsByPlatform();
-  for (const account of accounts) grouped[account.platform].push(account);
+  // Only the five tracked platforms; other platforms (YouTube, Threads…)
+  // from the Main project are skipped instead of crashing the page.
+  for (const account of accounts) grouped[account.platform]?.push(account);
   return grouped;
 }
 

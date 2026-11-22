@@ -1,5 +1,8 @@
 import { query } from "@/lib/db";
+import { ALPHAA_REGION_WHERE } from "@/lib/alphaa-platform-sql";
 import { capEuropeAccountsToCountryPlan } from "@/lib/balkan-sheets-plan-cap";
+import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
+import { splitAccountsBySheetsTab } from "@/lib/sheets-export-region";
 import type { Platform } from "@/lib/platform-config";
 import type { AccountScope } from "@/types/db";
 import type { SheetsExportAccountRow } from "@/types/admin";
@@ -66,6 +69,8 @@ const SHEETS_EXPORT_QUERY = `
     WHERE u.role = 'employee'
       AND u.is_active = TRUE
       AND sma.is_spare = FALSE
+      -- Main (ALPHAA) holders go to the Main tab only (own export).
+      AND NOT ${ALPHAA_REGION_WHERE}
 `;
 
 const SHEETS_EXPORT_ORDER = `
@@ -83,12 +88,27 @@ const SHEETS_EXPORT_ORDER = `
            sma.id ASC
 `;
 
-/** Africa/Europe strategy export — temp_users + temp_social_media_accounts only. */
-export async function fetchAccountsForSheetsExport(): Promise<SheetsExportAccountRow[]> {
-  const rows = await query<SheetsExportQueryRow>(
-    `${SHEETS_EXPORT_QUERY}${SHEETS_EXPORT_ORDER}`
-  );
-
-  const capped = await capEuropeAccountsToCountryPlan(rows);
-  return capped.map(mapSheetsExportRow);
+/**
+ * Africa / Europe / Asia strategy export, one list per tab. Each account goes
+ * to its holder's project tab (never by country); Strategy-created projects
+ * join their parent tab. Only the Europe tab is capped to the country plan.
+ */
+export async function fetchAccountsForSheetsExport(): Promise<{
+  Africa: SheetsExportAccountRow[];
+  Europe: SheetsExportAccountRow[];
+  Asia: SheetsExportAccountRow[];
+  skipped: number;
+}> {
+  const [rows, projects] = await Promise.all([
+    query<SheetsExportQueryRow>(`${SHEETS_EXPORT_QUERY}${SHEETS_EXPORT_ORDER}`),
+    fetchEmployeeCreateProjectOptions(),
+  ]);
+  const tabs = splitAccountsBySheetsTab(rows, projects);
+  const europe = await capEuropeAccountsToCountryPlan(tabs.Europe);
+  return {
+    Africa: tabs.Africa.map(mapSheetsExportRow),
+    Europe: europe.map(mapSheetsExportRow),
+    Asia: tabs.Asia.map(mapSheetsExportRow),
+    skipped: tabs.skipped.length,
+  };
 }

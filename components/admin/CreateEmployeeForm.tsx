@@ -400,7 +400,6 @@ export function CreateEmployeeForm({
             className={`cursor-pointer ${fieldClass}`}
           >
             <option value="employee">{ROLE_LABELS.employee}</option>
-            <option value="team_lead">{ROLE_LABELS.team_lead}</option>
             <option value="manager">{ROLE_LABELS.manager}</option>
             <option value="op">{ROLE_LABELS.op}</option>
             <option value="hoo">{ROLE_LABELS.hoo}</option>
