@@ -7,7 +7,7 @@ import {
   sheetRegion,
 } from "@/lib/sheets-validation-values";
 import { sheetCountryName, sheetLanguage1 } from "@/lib/sheets-country-config";
-import type { SheetsExportTab } from "@/lib/sheets-export-region";
+import { sheetsBaseRegion, type SheetsExportTab } from "@/lib/sheets-export-region";
 import type { SheetsExportAccountRow } from "@/types/admin";
 
 function capitalizeWords(str: string | null | undefined) {
@@ -28,7 +28,7 @@ export function transformSheetsExportRow(
 ) {
   const { personal, umbrella } = sheetPersonalUmbrellaFlags(account.account_scope);
   // Region column = the tab the account is written to (its holder's project).
-  const exportRegion = tab;
+  const exportRegion = sheetsBaseRegion(tab);
 
   return {
     region: sheetRegion(exportRegion),
