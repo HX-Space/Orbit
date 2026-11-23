@@ -631,6 +631,18 @@ export async function updateEmployeeProfile(
       } else if (currentRegion && fits(currentRegion)) {
         assignedRegion = currentRegion as typeof assignedRegion;
       }
+      // Only Admin / Head of Department may move a Country Manager to another project.
+      if (
+        p.role === "manager" &&
+        currentRegion &&
+        assignedRegion !== currentRegion &&
+        actorRole !== "admin" &&
+        actorRole !== "hoo"
+      ) {
+        throw new Error(
+          "Only an Admin or Head of Department can move a Country Manager to another project."
+        );
+      }
     }
 
     // Operation Managers keep the person inside their own projects and countries.
@@ -848,9 +860,14 @@ export async function getAdminEmployeeEditorBundle(
   userId: number,
   source: AdminEmployeeSource = "temp"
 ): Promise<AdminEmployeeEditorBundle | null> {
-  await requireAdminSession("canRead");
+  const { actorRole } = await requireAdminSession("canRead");
   if (!Number.isFinite(userId)) return null;
-  return fetchAdminEmployeeEditorBundle(userId, source);
+  const bundle = await fetchAdminEmployeeEditorBundle(userId, source);
+  if (bundle?.source !== "temp") return bundle;
+  return {
+    ...bundle,
+    canChangeProject: actorRole === "admin" || actorRole === "hoo",
+  };
 }
 
 /** Employees table: a person's accounts, loaded when their row is opened. */

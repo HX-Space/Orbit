@@ -72,6 +72,7 @@ export function EmployeeForm({
   embedded = false,
   onSaved,
   employmentStatusLocked = false,
+  canChangeProject = false,
 }: EmployeeFormProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -191,6 +192,21 @@ export function EmployeeForm({
       manager_id: reporting.manager_id,
       op_id: reporting.op_id,
     }));
+  }
+
+  // Move a Country Manager to another project: keep only countries in it.
+  function changeManagerProject(region: string) {
+    setForm((f) => {
+      const allowed = setupCountriesForRegion(
+        region as SetupRegion,
+        projects
+      ) as readonly string[];
+      return {
+        ...f,
+        region,
+        manager_countries: f.manager_countries.filter((c) => allowed.includes(c)),
+      };
+    });
   }
 
   function toggleManagerCountry(option: string, groupRegion: string) {
@@ -512,6 +528,32 @@ export function EmployeeForm({
             className={fieldClass}
           />
         </label>
+
+        {isManagerRole && canChangeProject ? (
+          <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-[var(--color-muted)]">
+            Project
+            <select
+              value={form.region}
+              onChange={(e) => changeManagerProject(e.target.value)}
+              aria-label="Move this Country Manager to another project"
+              className={`cursor-pointer ${fieldClass}`}
+            >
+              {form.region ? null : <option value="">Select a project</option>}
+              {PROJECT_REGIONS.map((region) => (
+                <option key={region} value={region}>
+                  {regionDisplayLabel(region)}
+                </option>
+              ))}
+              {projects
+                .filter((project) => !isBuiltInSetupRegion(project.region))
+                .map((project) => (
+                  <option key={project.slug} value={project.region}>
+                    {project.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+        ) : null}
 
         {isManagerRole ? (
           <ManagerCountriesField

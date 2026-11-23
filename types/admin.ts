@@ -726,6 +726,8 @@ export type AdminTempEmployeeEditorBundle = {
   projects: EmployeeCreateProjectOption[];
   targets: UpdateEmployeeTargetsPayload;
   activeCounts: Record<string, number>;
+  /** Admin / Head of Department may move a Country Manager to another project. */
+  canChangeProject?: boolean;
 };
 
 export type AdminAlphaaEmployeeEditorBundle = {
@@ -771,6 +773,8 @@ export type EmployeeFormProps = {
   embedded?: boolean;
   onSaved?: () => void;
   employmentStatusLocked?: boolean;
+  /** Admin / Head of Department: show the Project picker for Country Managers. */
+  canChangeProject?: boolean;
 };
 
 export type EmployeeTargetsFormProps = {

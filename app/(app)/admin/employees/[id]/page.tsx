@@ -135,6 +135,7 @@ export default async function AdminEmployeeDetailPage({
           ops={ops}
           admins={admins}
           projects={projects}
+          canChangeProject={viewer.role === "admin" || viewer.role === "hoo"}
         />
       ) : null}
 

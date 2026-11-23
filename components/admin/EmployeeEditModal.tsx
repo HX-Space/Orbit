@@ -134,6 +134,9 @@ function EmployeeEditModalFrame({
                     bundle.source === "temp" ? bundle.projects : undefined
                   }
                   source={bundle.source}
+                  canChangeProject={
+                    bundle.source === "temp" && bundle.canChangeProject === true
+                  }
                   embedded
                   onSaved={onReload}
                 />
