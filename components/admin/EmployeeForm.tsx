@@ -592,6 +592,12 @@ export function EmployeeForm({
           <ManagerCountriesField
             selected={form.manager_countries}
             region={form.region}
+            // Only the chosen project's countries (all projects until one is chosen).
+            projects={
+              projects.some((project) => project.region === form.region)
+                ? projects.filter((project) => project.region === form.region)
+                : projects
+            }
             onToggle={toggleManagerCountry}
           />
         ) : null}
