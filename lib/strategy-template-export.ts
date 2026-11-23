@@ -23,6 +23,12 @@ export type StrategyTemplateTab = (typeof STRATEGY_TEMPLATE_TABS)[number];
 
 const TEMPLATE_PATH = path.join(process.cwd(), "templates", "alpha-strategy-template.xlsx");
 
+/** Rows the template pre-formats (header + a few sample rows); cleared below the table. */
+const TEMPLATE_STYLED_ROWS = 10;
+
+const THIN = { style: "thin" as const, color: { argb: "FF000000" } };
+const DATA_BORDER = { top: THIN, left: THIN, bottom: THIN, right: THIN };
+
 /**
  * Template column (header text) for each Strategy platform and scope.
  * Twitter / Facebook "native" targets count as Umbrella, as Orbit's coverage does.
@@ -149,9 +155,37 @@ export async function buildStrategyTemplateWorkbook(
     const firstPlatformCol = columnOf.get("Twitter-Personal") ?? 5;
     const totalCol = columnOf.get("Total");
     const lastPlatformCol = totalCol ? totalCol - 1 : worksheet.columnCount;
+    const lastCol = totalCol ?? lastPlatformCol;
+    const countryCol = columnOf.get("Country");
+    const resourcesCol = columnOf.get("# of Resources") ?? firstPlatformCol - 1;
+    const headerRow = worksheet.getRow(1);
+    const letter = (col: number) => headerRow.getCell(col).address.replace(/\d+$/, "");
+    const rows = rowsByTab[tab];
+    const totalsRowNumber = rows.length + 2;
 
-    rowsByTab[tab].forEach((row, index) => {
-      const sheetRow = worksheet.getRow(index + 2);
+    // The template only formats a few rows, so every row gets the same look here.
+    // A new style object per cell: template cells share style objects, and editing
+    // a shared one would reformat every empty row below the table too.
+    const styleRow = (sheetRow: ExcelJS.Row, kind: "data" | "totals") => {
+      for (let col = 1; col <= lastCol; col += 1) {
+        const strong = kind === "totals" || col === countryCol || col === totalCol;
+        sheetRow.getCell(col).style = {
+          font: { name: "Calibri", size: 14, bold: strong },
+          alignment: { horizontal: "center", vertical: "middle" },
+          border: DATA_BORDER,
+          fill:
+            kind === "totals"
+              ? { type: "pattern", pattern: "solid", fgColor: { argb: "FFDEEAF6" } }
+              : { type: "pattern", pattern: "none" },
+          numFmt: "General",
+        };
+      }
+      sheetRow.height = 18;
+    };
+
+    rows.forEach((row, index) => {
+      const rowNumber = index + 2;
+      const sheetRow = worksheet.getRow(rowNumber);
       const set = (header: string, value: string | number) => {
         const col = columnOf.get(header);
         if (col) sheetRow.getCell(col).value = value;
@@ -162,22 +196,66 @@ export async function buildStrategyTemplateWorkbook(
       set("# of Resources", row.resources);
       let total = 0;
       for (let col = firstPlatformCol; col <= lastPlatformCol; col += 1) {
-        const header = String(worksheet.getRow(1).getCell(col).value ?? "").trim();
+        const header = String(headerRow.getCell(col).value ?? "").trim();
         const value = row.counts.get(header) ?? 0;
         sheetRow.getCell(col).value = value;
         total += value;
       }
       if (totalCol) {
-        const from = worksheet.getRow(1).getCell(firstPlatformCol).address.replace(/\d+$/, "");
-        const to = worksheet.getRow(1).getCell(lastPlatformCol).address.replace(/\d+$/, "");
         sheetRow.getCell(totalCol).value = {
-          formula: `SUM(${from}${index + 2}:${to}${index + 2})`,
+          formula: `SUM(${letter(firstPlatformCol)}${rowNumber}:${letter(lastPlatformCol)}${rowNumber})`,
           result: total,
         };
       }
+      styleRow(sheetRow, "data");
       sheetRow.commit();
     });
+
+    // Totals row: resources and every platform column, summed.
+    if (rows.length > 0) {
+      const totalsRow = worksheet.getRow(totalsRowNumber);
+      totalsRow.getCell(countryCol ?? 2).value = "Total";
+      for (let col = resourcesCol; col <= lastCol; col += 1) {
+        let result = 0;
+        for (let r = 2; r < totalsRowNumber; r += 1) {
+          const value = worksheet.getRow(r).getCell(col).value;
+          result +=
+            typeof value === "number"
+              ? value
+              : Number((value as { result?: number } | null)?.result ?? 0) || 0;
+        }
+        totalsRow.getCell(col).value = {
+          formula: `SUM(${letter(col)}2:${letter(col)}${totalsRowNumber - 1})`,
+          result,
+        };
+      }
+      styleRow(totalsRow, "totals");
+      totalsRow.commit();
+    }
+
+    // Clear the template's leftover formatting below the table (e.g. a stray highlighted row).
+    for (let r = totalsRowNumber + (rows.length > 0 ? 1 : 0); r <= TEMPLATE_STYLED_ROWS; r += 1) {
+      const sheetRow = worksheet.getRow(r);
+      for (let col = 1; col <= lastCol; col += 1) sheetRow.getCell(col).style = {};
+    }
+
+    // Columns wide enough to read, and the header + Region / Country stay in view.
+    const widen = (col: number | undefined, values: string[], min: number) => {
+      if (!col) return;
+      const longest = Math.max(0, ...values.map((value) => value.length));
+      worksheet.getColumn(col).width = Math.max(min, Math.min(40, longest * 1.3 + 3));
+    };
+    widen(columnOf.get("Region"), rows.map((row) => row.region), 10);
+    widen(countryCol, rows.map((row) => row.country), 14);
+    widen(columnOf.get("Language"), rows.map((row) => row.language), 14);
+    if (totalCol) worksheet.getColumn(totalCol).width = 12;
+    worksheet.views = [
+      { state: "frozen", xSplit: countryCol ?? 2, ySplit: 1, topLeftCell: "A2", activeCell: "A2" },
+    ];
   }
+
+  // Excel recalculates the Total formulas when the file opens.
+  workbook.calcProperties = { ...workbook.calcProperties, fullCalcOnLoad: true };
 
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
