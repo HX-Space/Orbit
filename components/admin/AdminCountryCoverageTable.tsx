@@ -117,6 +117,7 @@ export function AdminCountryCoverageTable({
   rows,
   totals,
   showAlphaaPlatforms = false,
+  projectName,
 }: AdminCountryCoverageTableProps) {
   if (showAlphaaPlatforms && totals.scopes) {
     const columns = mainScopeColumns([
@@ -204,6 +205,7 @@ export function AdminCountryCoverageTable({
             <AdminCountryCoverageRow
               key={row.country}
               row={row}
+              projectName={projectName}
               showAlphaaPlatforms={showAlphaaPlatforms}
             />
           ))}

@@ -15,12 +15,14 @@ import {
   COVERAGE_LANGUAGE_CELL,
   coverageColumnCount,
 } from "@/lib/admin-coverage-table-layout";
+import { projectSplitCountryLabel } from "@/lib/overview-country-display";
 import type { AdminCountryCoverageRowProps } from "@/types/admin";
 
 export function AdminCountryCoverageRow({
   row,
   showAlphaaPlatforms = false,
   scopeColumns,
+  projectName,
 }: AdminCountryCoverageRowProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -59,7 +61,7 @@ export function AdminCountryCoverageRow({
             </motion.button>
             <CountryFlag country={row.country} title={row.country} className="h-4 w-6 shrink-0" />
             <span className="min-w-0 truncate text-[13px] font-semibold text-[var(--color-ink)]">
-              {row.country}
+              {projectSplitCountryLabel(row.country, projectName) ?? row.country}
             </span>
             {row.onPlan ? null : (
               <span className="shrink-0 text-[11px] font-medium text-[var(--color-amber)]">

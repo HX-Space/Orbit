@@ -8,6 +8,28 @@ export const MAIN_ASIA_COUNTRIES = ["Palestine"] as const;
 
 export type OverviewCountrySource = "Africa" | "Alphaa";
 
+/**
+ * Big countries held in two projects (e.g. Moldova in Europe and Europe 2).
+ * In the second project they show the project name, "Moldova (Europe 2)", so the
+ * two are easy to tell apart before the projects are merged.
+ */
+const PROJECT_SPLIT_COUNTRIES: Record<string, readonly string[]> = {
+  "africa 2": ["Sudan"],
+  "europe 2": ["Moldova", "Slovakia"],
+};
+
+/** "Moldova (Europe 2)" for those countries in that project; null otherwise. */
+export function projectSplitCountryLabel(
+  country: string,
+  project: string | null | undefined
+): string | null {
+  const name = project?.trim() ?? "";
+  const base = baseCountryFromDisplay(country.trim());
+  return PROJECT_SPLIT_COUNTRIES[name.toLowerCase()]?.includes(base)
+    ? `${base} (${name})`
+    : null;
+}
+
 export function isDualRegionCountry(country: string) {
   return (DUAL_REGION_COUNTRIES as readonly string[]).includes(country);
 }
@@ -62,6 +84,8 @@ export function employeeListCountryLabel(
   if (!raw) return raw;
   const base = baseCountryFromDisplay(raw);
   if (base !== raw) return raw;
+  const split = context.source === "temp" ? projectSplitCountryLabel(base, context.region) : null;
+  if (split) return split;
   if (!isAmbiguousEmployeeCountry(base)) return base;
 
   if (context.source === "alphaa") {

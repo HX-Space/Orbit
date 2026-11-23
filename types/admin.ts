@@ -625,6 +625,8 @@ export type AdminCountryCoverageTableProps = {
   rows: AdminCountryCoverageRow[];
   totals: AdminCountryCoverageTotals;
   showAlphaaPlatforms?: boolean;
+  /** Project tab shown (e.g. "Europe 2"), for country labels like "Moldova (Europe 2)". */
+  projectName?: string;
 };
 
 export type AdminCountryCoverageResponse =
@@ -690,6 +692,7 @@ export type AdminCoveragePlatformHeadCellProps = {
 export type AdminCountryCoverageRowProps = {
   row: AdminCountryCoverageRow;
   showAlphaaPlatforms?: boolean;
+  projectName?: string;
   /** Main tab: personal / umbrella sub-columns (replaces the plain platform cells). */
   scopeColumns?: MainScopeColumn[];
 };

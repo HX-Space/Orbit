@@ -24,6 +24,7 @@ export function AdminCountryCoverageSection({
         rows={coverage.rows}
         totals={coverage.totals}
         showAlphaaPlatforms={region === "Alphaa"}
+        projectName={region === "Overview" ? undefined : projectName ?? region}
       />
     </section>
   );
