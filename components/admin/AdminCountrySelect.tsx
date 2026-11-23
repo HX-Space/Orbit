@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { CountryFlag } from "@/lib/country-icons";
 import { ALL_SETUP_COUNTRIES } from "@/lib/setup-options";
+import { projectSplitCountryLabel } from "@/lib/overview-country-display";
 import type { AdminCountrySelectProps } from "@/types/admin";
 
 export function AdminCountrySelect({
@@ -17,7 +18,10 @@ export function AdminCountrySelect({
   ariaDescribedBy,
   invalid = false,
   emptyLabel,
+  project,
 }: AdminCountrySelectProps) {
+  // The saved value stays the plain country; only the text shows the project.
+  const label = (country: string) => projectSplitCountryLabel(country, project) ?? country;
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -82,7 +86,7 @@ export function AdminCountrySelect({
             <CountryFlag country={selected} title={selected} className="h-4 w-6" />
           ) : null}
           <span className={selected ? "truncate" : "truncate text-[var(--color-muted)]"}>
-            {selected || emptyLabel || "Select a country"}
+            {selected ? label(selected) : emptyLabel || "Select a country"}
           </span>
         </span>
         <ChevronDown
@@ -127,7 +131,7 @@ export function AdminCountrySelect({
                   }`}
                 >
                   <CountryFlag country={country} title={country} className="h-4 w-6" />
-                  {country}
+                  {label(country)}
                 </button>
               </li>
             );

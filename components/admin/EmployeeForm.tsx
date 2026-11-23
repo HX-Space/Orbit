@@ -442,6 +442,7 @@ export function EmployeeForm({
               countries={form.region ? projectCountries : undefined}
               ariaLabel="Employee country"
               emptyLabel={form.role === "employee" ? "No country yet" : undefined}
+              project={form.region}
             />
           </label>
         ) : null}

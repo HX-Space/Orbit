@@ -91,6 +91,9 @@ export function CreateEmployeeProjectFields({
           countries={projectCountries}
           disabled={!projectSlug || projectCountries.length === 0}
           onChange={onCountryChange}
+          project={
+            projectSlug ? regionFromStrategyProjectSlug(projectSlug, projects) : undefined
+          }
           ariaLabel="Assign employee country for this project"
           ariaInvalid={Boolean(countryError)}
           ariaDescribedBy={
