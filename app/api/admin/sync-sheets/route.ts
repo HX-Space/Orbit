@@ -20,17 +20,9 @@ export async function POST() {
       fetchAccountsForSheetsExport(),
       fetchAlphaaAccountsForSheetsExport(),
     ]);
-    const {
-      africaCount,
-      europeCount,
-      balkanCount,
-      asiaCount,
-      africa2Count,
-      europe2Count,
-      alphaaCount,
-      total,
-    } = await syncAccountsToGoogleSheets(projectAccounts, alphaaAccounts);
-    // Accounts whose project has no tab.
+    const { africaCount, europeCount, balkanCount, asiaCount, alphaaCount, total } =
+      await syncAccountsToGoogleSheets(projectAccounts, alphaaAccounts);
+    // Accounts whose project has no tab (not Africa, Europe, Asia or Main).
     const skippedCount = projectAccounts.skipped;
 
     const result: SheetsSyncResult = {
@@ -41,8 +33,6 @@ export async function POST() {
       europeCount,
       balkanCount,
       asiaCount,
-      africa2Count,
-      europe2Count,
       alphaaCount,
       skippedCount,
     };
@@ -51,17 +41,7 @@ export async function POST() {
       action: "sync",
       resource: "sheets",
       summary: `Synced ${total} accounts to Google Sheets`,
-      details: {
-        africaCount,
-        europeCount,
-        balkanCount,
-        asiaCount,
-        africa2Count,
-        europe2Count,
-        alphaaCount,
-        skippedCount,
-        total,
-      },
+      details: { africaCount, europeCount, balkanCount, asiaCount, alphaaCount, skippedCount, total },
     });
 
     return NextResponse.json(result);

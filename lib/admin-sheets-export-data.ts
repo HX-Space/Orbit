@@ -97,8 +97,6 @@ export async function fetchAccountsForSheetsExport(): Promise<{
   Africa: SheetsExportAccountRow[];
   Europe: SheetsExportAccountRow[];
   Asia: SheetsExportAccountRow[];
-  "Africa 2": SheetsExportAccountRow[];
-  "Europe 2": SheetsExportAccountRow[];
   skipped: number;
 }> {
   const [rows, projects] = await Promise.all([
@@ -111,8 +109,6 @@ export async function fetchAccountsForSheetsExport(): Promise<{
     Africa: tabs.Africa.map(mapSheetsExportRow),
     Europe: europe.map(mapSheetsExportRow),
     Asia: tabs.Asia.map(mapSheetsExportRow),
-    "Africa 2": tabs["Africa 2"].map(mapSheetsExportRow),
-    "Europe 2": tabs["Europe 2"].map(mapSheetsExportRow),
     skipped: tabs.skipped.length,
   };
 }

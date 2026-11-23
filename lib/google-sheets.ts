@@ -63,10 +63,6 @@ function getRegionSheetsTarget(region: SetupRegion): RegionSheetsTarget {
     sheetTab = process.env.GOOGLE_SHEETS_TAB_ALPHAA?.trim() || "ALPHAA";
   } else if (region === "Asia") {
     sheetTab = process.env.GOOGLE_SHEETS_TAB_ASIA?.trim() || "Asia";
-  } else if (region === "Africa 2") {
-    sheetTab = process.env.GOOGLE_SHEETS_TAB_AFRICA_2?.trim() || "Africa 2";
-  } else if (region === "Europe 2") {
-    sheetTab = process.env.GOOGLE_SHEETS_TAB_EUROPE_2?.trim() || "Europe 2";
   }
 
   return { spreadsheetId, sheetTab };
@@ -161,8 +157,6 @@ export type SheetsSyncSummary = {
   /** @deprecated Use europeCount */
   balkanCount: number;
   asiaCount: number;
-  africa2Count: number;
-  europe2Count: number;
   alphaaCount: number;
   total: number;
 };
@@ -177,7 +171,7 @@ async function withTabName<T>(tabName: string, run: () => Promise<T>): Promise<T
   }
 }
 
-/** Sync the Africa, Europe, Asia, Africa 2, Europe 2 and Main (ALPHAA) tabs, each with its own project's accounts. */
+/** Sync the Africa, Europe, Asia and Main (ALPHAA) tabs, each with its own project's accounts. */
 export async function syncAccountsToGoogleSheets(
   projectAccounts: Record<SheetsExportTab, SheetsExportAccountRow[]>,
   alphaaAccounts: AlphaaSheetsExportAccountRow[]
@@ -191,27 +185,21 @@ export async function syncAccountsToGoogleSheets(
   };
   const alphaaTarget = getRegionSheetsTarget("Alphaa");
 
-  const [africaCount, europeCount, asiaCount, africa2Count, europe2Count, alphaaCount] =
-    await Promise.all([
-      syncTab("Africa"),
-      syncTab("Europe"),
-      syncTab("Asia"),
-      syncTab("Africa 2"),
-      syncTab("Europe 2"),
-      withTabName(alphaaTarget.sheetTab, () =>
-        syncAlphaaAccountsToSheetTab(alphaaTarget, alphaaAccounts, credentials)
-      ),
-    ]);
+  const [africaCount, europeCount, asiaCount, alphaaCount] = await Promise.all([
+    syncTab("Africa"),
+    syncTab("Europe"),
+    syncTab("Asia"),
+    withTabName(alphaaTarget.sheetTab, () =>
+      syncAlphaaAccountsToSheetTab(alphaaTarget, alphaaAccounts, credentials)
+    ),
+  ]);
 
   return {
     africaCount,
     europeCount,
     balkanCount: europeCount,
     asiaCount,
-    africa2Count,
-    europe2Count,
     alphaaCount,
-    total:
-      africaCount + europeCount + asiaCount + africa2Count + europe2Count + alphaaCount,
+    total: africaCount + europeCount + asiaCount + alphaaCount,
   };
 }

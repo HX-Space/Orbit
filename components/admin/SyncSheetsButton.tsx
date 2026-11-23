@@ -36,12 +36,6 @@ export function SyncSheetsButton({
       if (result.asiaCount != null) {
         parts.push(`${result.asiaCount} Asia`);
       }
-      if (result.africa2Count != null) {
-        parts.push(`${result.africa2Count} Africa 2`);
-      }
-      if (result.europe2Count != null) {
-        parts.push(`${result.europe2Count} Europe 2`);
-      }
       if (result.alphaaCount != null) {
         parts.push(`${result.alphaaCount} ${MAIN_PROJECT_LABEL}`);
       }

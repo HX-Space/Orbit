@@ -1367,8 +1367,6 @@ export type SheetsSyncResult = {
   /** @deprecated Use europeCount */
   balkanCount?: number;
   asiaCount?: number;
-  africa2Count?: number;
-  europe2Count?: number;
   alphaaCount?: number;
   /** Accounts whose project has no tab, so they were not written. */
   skippedCount?: number;
