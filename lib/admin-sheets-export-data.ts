@@ -1,6 +1,5 @@
 import { query } from "@/lib/db";
 import { ALPHAA_REGION_WHERE } from "@/lib/alphaa-platform-sql";
-import { capEuropeAccountsToCountryPlan } from "@/lib/balkan-sheets-plan-cap";
 import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
 import { splitAccountsBySheetsTab } from "@/lib/sheets-export-region";
 import type { Platform } from "@/lib/platform-config";
@@ -91,7 +90,7 @@ const SHEETS_EXPORT_ORDER = `
 /**
  * Africa / Europe / Asia strategy export, one list per tab. Each account goes
  * to its holder's project tab (never by country); Strategy-created projects
- * join their parent tab. Only the Europe tab is capped to the country plan.
+ * join their parent tab. Every non-spare account is written; none are cut to the plan.
  */
 export async function fetchAccountsForSheetsExport(): Promise<{
   Africa: SheetsExportAccountRow[];
@@ -104,10 +103,9 @@ export async function fetchAccountsForSheetsExport(): Promise<{
     fetchEmployeeCreateProjectOptions(),
   ]);
   const tabs = splitAccountsBySheetsTab(rows, projects);
-  const europe = await capEuropeAccountsToCountryPlan(tabs.Europe);
   return {
     Africa: tabs.Africa.map(mapSheetsExportRow),
-    Europe: europe.map(mapSheetsExportRow),
+    Europe: tabs.Europe.map(mapSheetsExportRow),
     Asia: tabs.Asia.map(mapSheetsExportRow),
     skipped: tabs.skipped.length,
   };
