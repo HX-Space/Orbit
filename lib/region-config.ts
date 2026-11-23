@@ -17,6 +17,8 @@ export const EUROPE_COUNTRIES = [
   "Macedonia",
   "Bulgaria",
   "Bosnia",
+  "Moldova 2",
+  "Slovakia 2",
 ] as const;
 
 /** @deprecated Use EUROPE_COUNTRIES */

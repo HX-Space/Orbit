@@ -37,6 +37,8 @@ export const SETUP_COUNTRIES = [
   "Mali",
   "Chad",
   "Sudan",
+  // Big countries kept apart after Africa 2 was merged into Africa.
+  "Sudan 2",
 ] as const;
 
 /** Europe (formerly Balkan) countries — labels must match Google Sheets dropdowns. */
@@ -47,6 +49,9 @@ export const EUROPE_SETUP_COUNTRIES = [
   "Macedonia",
   "Bulgaria",
   "Bosnia",
+  // Big countries kept apart after Europe 2 was merged into Europe.
+  "Moldova 2",
+  "Slovakia 2",
 ] as const;
 
 /** @deprecated Use EUROPE_SETUP_COUNTRIES */
