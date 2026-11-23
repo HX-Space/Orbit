@@ -625,7 +625,7 @@ export type AdminCountryCoverageTableProps = {
   rows: AdminCountryCoverageRow[];
   totals: AdminCountryCoverageTotals;
   showAlphaaPlatforms?: boolean;
-  /** Project tab shown (e.g. "Europe 2"), for country labels like "Moldova (Europe 2)". */
+  /** Project tab shown (e.g. "Europe 2"), for country labels like "Moldova 2". */
   projectName?: string;
 };
 
@@ -894,7 +894,7 @@ export type AdminCountrySelectProps = {
   invalid?: boolean;
   /** When set, the list starts with this choice to leave the country empty. */
   emptyLabel?: string;
-  /** Project picked (e.g. "Europe 2"): shows labels like "Moldova (Europe 2)". */
+  /** Project picked (e.g. "Europe 2"): shows labels like "Moldova 2". */
   project?: string;
 };
 

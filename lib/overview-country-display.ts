@@ -10,15 +10,15 @@ export type OverviewCountrySource = "Africa" | "Alphaa";
 
 /**
  * Big countries held in two projects (e.g. Moldova in Europe and Europe 2).
- * In the second project they show the project name, "Moldova (Europe 2)", so the
- * two are easy to tell apart before the projects are merged.
+ * In the second project they show as "Moldova 2", "Slovakia 2" and "Sudan 2",
+ * so they stay apart when Africa 2 / Europe 2 are merged into Africa / Europe.
  */
 const PROJECT_SPLIT_COUNTRIES: Record<string, readonly string[]> = {
   "africa 2": ["Sudan"],
   "europe 2": ["Moldova", "Slovakia"],
 };
 
-/** "Moldova (Europe 2)" for those countries in that project; null otherwise. */
+/** "Moldova 2" for those countries in that project; null otherwise. */
 export function projectSplitCountryLabel(
   country: string,
   project: string | null | undefined
@@ -26,7 +26,7 @@ export function projectSplitCountryLabel(
   const name = project?.trim() ?? "";
   const base = baseCountryFromDisplay(country.trim());
   return PROJECT_SPLIT_COUNTRIES[name.toLowerCase()]?.includes(base)
-    ? `${base} (${name})`
+    ? `${base} 2`
     : null;
 }
 
