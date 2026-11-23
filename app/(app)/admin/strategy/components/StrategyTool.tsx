@@ -10,6 +10,7 @@ import { strategyHrefForProject } from "@/lib/strategy-tabs";
 import { StrategyBookTabs } from "./StrategyBookTabs";
 import { StrategyDeleteProjectModal } from "./StrategyDeleteProjectModal";
 import { StrategyEmptyState } from "./StrategyEmptyState";
+import { StrategyTemplateDownloadButton } from "./StrategyTemplateDownloadButton";
 import { StrategyNewProjectButton } from "./StrategyNewProjectButton";
 import { StrategyNewProjectModal } from "./StrategyNewProjectModal";
 import { StrategyProjectPanel } from "./StrategyProjectPanel";
@@ -99,11 +100,10 @@ export function StrategyTool({
             </p>
           ) : null}
         </div>
-        {canEdit ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <StrategyNewProjectButton onClick={openCreate} />
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <StrategyTemplateDownloadButton />
+          {canEdit ? <StrategyNewProjectButton onClick={openCreate} /> : null}
+        </div>
       </div>
 
       {projects.length === 0 ? (
