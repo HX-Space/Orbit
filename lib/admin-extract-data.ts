@@ -1,3 +1,4 @@
+import { TEMP_USER_SLICES, accountInSliceSql } from "@/lib/shared-employee-sql";
 import { fetchAlphaaAdminExtract } from "@/lib/admin-extract-alphaa-data";
 import {
   countriesForExtractSource,
@@ -236,8 +237,6 @@ async function fetchTempAdminExtract(
   const where: string[] = [
     `LOWER(TRIM(u.role)) = ANY($${params.length}::text[])`,
     `u.is_active = TRUE`,
-    // Accounts of people who are also Main handlers are listed under Main only.
-    `NULLIF(TRIM(u.main_country), '') IS NULL`,
   ];
 
   appendTempUserRegionFilter(filters, params, where);
@@ -305,7 +304,8 @@ async function fetchTempAdminExtract(
         a.mobile_number,
         COALESCE(NULLIF(TRIM(a.language1), ''), u.language) AS language
        FROM temp_social_media_accounts a
-       INNER JOIN temp_users u ON u.id = a.user_id
+       INNER JOIN ${TEMP_USER_SLICES} u
+         ON u.id = a.user_id AND ${accountInSliceSql("a", "u")}
       WHERE ${where.join("\n        AND ")}
       ORDER BY u.region ASC NULLS LAST,
                u.country ASC NULLS LAST,

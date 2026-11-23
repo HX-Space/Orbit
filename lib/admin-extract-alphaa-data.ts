@@ -1,3 +1,4 @@
+import { TEMP_USER_SLICES, accountInSliceSql } from "@/lib/shared-employee-sql";
 import {
   ALPHAA_LEGACY_ACCOUNT_WHERE,
   ALPHAA_LEGACY_COUNTRY,
@@ -249,7 +250,7 @@ async function fetchAlphaaAdminExtractUsers(
         COALESCE(NULLIF(TRIM(u.full_name), ''), 'Handler ' || u.id::text) AS handler_name,
         COALESCE(u.role, 'handler') AS handler_role,
         u.email
-       FROM temp_users u
+       FROM ${TEMP_USER_SLICES} u
       WHERE ${where.join("\n        AND ")}
       ORDER BY country ASC NULLS LAST,
                handler_name ASC,
@@ -356,7 +357,8 @@ export async function fetchAlphaaAdminExtract(
         sma.mobile_number,
         COALESCE(NULLIF(TRIM(sma.language1), ''), u.language) AS language
        FROM temp_social_media_accounts sma
-       INNER JOIN temp_users u ON u.id = sma.user_id
+       INNER JOIN ${TEMP_USER_SLICES} u
+         ON u.id = sma.user_id AND ${accountInSliceSql("sma", "u")}
       ${whereSql}
       ORDER BY country ASC NULLS LAST,
                handler_name ASC,

@@ -88,6 +88,11 @@ function EmployeeEditModalFrame({
               <span className="rounded-full bg-[var(--color-emerald-tint)] px-3 py-1 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-emerald)]">
                 {roleBadge}
               </span>
+              {bundle?.source === "temp" && bundle.profile.is_shared ? (
+                <span className="rounded-full bg-[var(--color-cream-tint)] px-3 py-1 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-ink)]" title="Works in more than one project or country">
+                  Shared
+                </span>
+              ) : null}
             </div>
           </div>
           <motion.button

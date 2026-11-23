@@ -1,5 +1,6 @@
 "use server";
 
+import { TEMP_USER_SLICES, accountInSliceSql } from "@/lib/shared-employee-sql";
 import { revalidatePath } from "next/cache";
 import {
   assertViewerMayManageUser,
@@ -335,7 +336,8 @@ export async function setAdminSocialAccountSpare(
     }>(
       `SELECT a.user_id, u.region
          FROM temp_social_media_accounts a
-         INNER JOIN temp_users u ON u.id = a.user_id
+         INNER JOIN ${TEMP_USER_SLICES} u
+           ON u.id = a.user_id AND ${accountInSliceSql("a", "u")}
         WHERE a.id = $1`,
       [accountId]
     );

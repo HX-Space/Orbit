@@ -1,3 +1,5 @@
+import { TEMP_USER_SLICES, accountInSliceSql } from "@/lib/shared-employee-sql";
+import { sharedPlaceKey, sharedPlaceLabel } from "@/lib/shared-places";
 import { query } from "@/lib/db";
 import {
   ALPHAA_LEGACY_COUNTRY,
@@ -6,7 +8,7 @@ import {
 import { overviewDisplayCountry } from "@/lib/overview-country-display";
 import type { Platform } from "@/lib/platform-config";
 import type { AccountScope } from "@/types/db";
-import type {
+import type { SharedPlaceOption,
   AdminEmployeeSource,
   AdminSocialAccountListItem,
   AdminSpareAccountListItem,
@@ -29,6 +31,8 @@ type AccountQueryRow = {
   account_scope: AccountScope;
   status: AdminSocialAccountListItem["status"];
   is_spare: boolean;
+  assigned_region: string | null;
+  assigned_country: string | null;
 };
 
 type TempSpareQueryRow = Omit<AdminSpareAccountListItem, "source" | "projects">;
@@ -78,6 +82,39 @@ function mapAccount(row: AccountQueryRow): AdminSocialAccountListItem {
   };
 }
 
+/** Home place first, then the extra places, for shared employees among userIds. */
+export async function fetchSharedPlaceOptions(
+  userIds: number[]
+): Promise<Map<number, SharedPlaceOption[]>> {
+  const byUser = new Map<number, SharedPlaceOption[]>();
+  if (userIds.length === 0) return byUser;
+  const rows = await query<{
+    id: number;
+    region: string | null;
+    country: string | null;
+    is_extra_slice: boolean;
+  }>(
+    `SELECT id, region, country, is_extra_slice
+       FROM ${TEMP_USER_SLICES}
+      WHERE id = ANY($1::int[])
+        AND is_shared = TRUE
+      ORDER BY id, is_extra_slice, region, country`,
+    [userIds]
+  );
+  for (const row of rows) {
+    const place = { region: row.region?.trim() ?? "", country: row.country?.trim() ?? "" };
+    const list = byUser.get(row.id) ?? [];
+    list.push({
+      ...place,
+      key: sharedPlaceKey(place),
+      label: sharedPlaceLabel(place, !row.is_extra_slice),
+      isHome: !row.is_extra_slice,
+    });
+    byUser.set(row.id, list);
+  }
+  return byUser;
+}
+
 export async function fetchAdminEmployeeAccounts(
   userId: number
 ): Promise<AdminSocialAccountListItem[]> {
@@ -94,15 +131,30 @@ export async function fetchAdminAccountsByUserIds(
   const rows = await query<AccountQueryRow>(
     `SELECT id, user_id, platform, account_name, account_handle, account_url,
             category, username, account_email, account_password, email_password,
-            mobile_number, account_scope, status, is_spare
+            mobile_number, account_scope, status, is_spare,
+            assigned_region, assigned_country
        FROM temp_social_media_accounts
       WHERE user_id = ANY($1::int[])
       ORDER BY platform ASC, id ASC`,
     [userIds]
   );
+  const placesByUser = await fetchSharedPlaceOptions(userIds);
   for (const row of rows) {
     const list = byUser.get(row.user_id) ?? [];
-    list.push(mapAccount(row));
+    const account = mapAccount(row);
+    const options = placesByUser.get(row.user_id);
+    if (options && options.length > 1) {
+      const home = options.find((option) => option.isHome) ?? options[0]!;
+      account.place = {
+        key: sharedPlaceKey({
+          region: row.assigned_region?.trim() || home.region,
+          country: row.assigned_country?.trim() || home.country,
+        }),
+        options,
+        canChange: false,
+      };
+    }
+    list.push(account);
     byUser.set(row.user_id, list);
   }
   return byUser;
@@ -132,7 +184,8 @@ async function fetchTempSpareAccounts(): Promise<AdminSpareAccountListItem[]> {
         u.country,
         u.region
        FROM temp_social_media_accounts a
-       INNER JOIN temp_users u ON u.id = a.user_id
+       INNER JOIN ${TEMP_USER_SLICES} u
+         ON u.id = a.user_id AND ${accountInSliceSql("a", "u")}
       WHERE a.is_spare = TRUE
         AND a.status = 'active'
         AND LOWER(u.role) = 'employee'
@@ -165,7 +218,8 @@ async function fetchAlphaaSpareAccounts(): Promise<AdminSpareAccountListItem[]> 
         ) AS handler_name,
         ${ALPHAA_LEGACY_COUNTRY} AS country
        FROM temp_social_media_accounts sma
-       INNER JOIN temp_users u ON u.id = sma.user_id
+       INNER JOIN ${TEMP_USER_SLICES} u
+         ON u.id = sma.user_id AND ${accountInSliceSql("sma", "u")}
       WHERE ${ALPHAA_REGION_WHERE}
         AND sma.is_spare IS TRUE
       ORDER BY country ASC, handler_name ASC, sma.platform ASC, sma.id ASC`
@@ -242,12 +296,13 @@ export async function fetchAdminSpareMarkHolders(): Promise<
             'Handler ' || u.id::text
           ) AS full_name,
           ${ALPHAA_LEGACY_COUNTRY} AS country
-         FROM temp_users u
+         FROM ${TEMP_USER_SLICES} u
         WHERE ${ALPHAA_REGION_WHERE}
           AND EXISTS (
             SELECT 1
               FROM temp_social_media_accounts sma
              WHERE sma.user_id = u.id
+               AND ${accountInSliceSql("sma", "u")}
           )
         ORDER BY full_name ASC, u.id ASC`
     ),

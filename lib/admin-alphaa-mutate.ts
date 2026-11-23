@@ -3,9 +3,10 @@
  * Main holders are temp_users with region = 'Alphaa'; their accounts are in
  * temp_social_media_accounts. Nothing here touches the old Alpha tables.
  * Person edits (profile / active / delete) stay limited to region 'Alphaa'.
- * Single-account edits also accept people who are additionally Main handlers
- * (main_country set), so their Main accounts can be managed from Main screens.
+ * Single-account edits also accept shared employees whose account belongs to
+ * Main, so those accounts can be managed from Main screens.
  */
+import { TEMP_USER_SLICES, accountInSliceSql } from "@/lib/shared-employee-sql";
 import { pool, queryOne } from "@/lib/db";
 import { ALPHAA_REGION_WHERE } from "@/lib/alphaa-platform-sql";
 import { mapAlphaaRole } from "@/lib/admin-alphaa-roles";
@@ -177,7 +178,8 @@ export async function updateAlphaaSocialAccountRow(
   const existing = await queryOne<{ account_password: string | null }>(
     `SELECT sma.account_password
        FROM temp_social_media_accounts sma
-       INNER JOIN temp_users u ON u.id = sma.user_id
+       INNER JOIN ${TEMP_USER_SLICES} u
+         ON u.id = sma.user_id AND ${accountInSliceSql("sma", "u")}
       WHERE sma.id = $1
         AND ${ALPHAA_REGION_WHERE}`,
     [accountId]
@@ -254,8 +256,9 @@ export async function setAlphaaSocialAccountSpareRow(
     const result = await pool.query(
       `UPDATE temp_social_media_accounts sma
           SET is_spare = $2
-         FROM temp_users u
+         FROM ${TEMP_USER_SLICES} u
         WHERE u.id = sma.user_id
+          AND ${accountInSliceSql("sma", "u")}
           AND sma.id = $1
           AND ${ALPHAA_REGION_WHERE}`,
       [accountId, isSpare]

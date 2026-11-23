@@ -1,3 +1,4 @@
+import { TEMP_USER_SLICES, accountInSliceSql } from "@/lib/shared-employee-sql";
 import { query, queryOne } from "@/lib/db";
 import { MAIN_PROJECT_LABEL } from "@/lib/project-labels";
 import {
@@ -555,8 +556,9 @@ export async function applyStrategyProjectRegionToAccounts(
     await query(
       `UPDATE temp_social_media_accounts sma
        SET geo_region = $2
-       FROM temp_users u
+       FROM ${TEMP_USER_SLICES} u
        WHERE sma.user_id = u.id
+         AND ${accountInSliceSql("sma", "u")}
          AND u.region = 'Alphaa'
          AND LOWER(TRIM(COALESCE(u.country, ''))) = LOWER(TRIM($1))`,
       [name, accountRegion]

@@ -1,3 +1,4 @@
+import { TEMP_USER_SLICES, accountInSliceSql } from "@/lib/shared-employee-sql";
 import { regionForProjectSlug } from "@/lib/employee-create-projects-data";
 import { extractPlatformLabel } from "@/lib/admin-extract-platform";
 import {
@@ -179,7 +180,8 @@ async function fetchAlphaaBalanceAccounts(
         sma.username,
         sma.platform
        FROM temp_social_media_accounts sma
-       INNER JOIN temp_users u ON u.id = sma.user_id
+       INNER JOIN ${TEMP_USER_SLICES} u
+         ON u.id = sma.user_id AND ${accountInSliceSql("sma", "u")}
       WHERE ${ALPHAA_REGION_WHERE}
         AND ${ALPHAA_LEGACY_ACTIVE_WHERE}
         AND ${ALPHAA_LEGACY_COUNTRY} = ANY($1::text[])
@@ -237,7 +239,8 @@ async function fetchTempBalanceAccounts(
         u.target_instagram_count,
         u.target_tiktok_count
        FROM temp_social_media_accounts a
-       INNER JOIN temp_users u ON u.id = a.user_id
+       INNER JOIN ${TEMP_USER_SLICES} u
+         ON u.id = a.user_id AND ${accountInSliceSql("a", "u")}
       WHERE a.status = 'active'
         AND LOWER(u.role) = 'employee'
         AND u.is_active = TRUE

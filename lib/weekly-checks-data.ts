@@ -1,3 +1,4 @@
+import { TEMP_USER_SLICES, accountInSliceSql } from "@/lib/shared-employee-sql";
 import { query, queryOne } from "@/lib/db";
 import { opScopeSql } from "@/lib/op-scope";
 import { getTodayCairoDate } from "@/lib/cairo-date";
@@ -148,7 +149,8 @@ async function fetchCheckRows(
             c.checked_at,
             chk.full_name AS checked_by_name
        FROM temp_social_media_accounts a
-       JOIN temp_users u ON u.id = a.user_id
+       JOIN ${TEMP_USER_SLICES} u
+         ON u.id = a.user_id AND ${accountInSliceSql("a", "u")}
        LEFT JOIN temp_users tl ON tl.id = u.team_lead_id AND tl.role = 'team_lead'
        LEFT JOIN LATERAL (
          SELECT m.id

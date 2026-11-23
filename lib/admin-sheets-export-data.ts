@@ -1,3 +1,4 @@
+import { TEMP_USER_SLICES, accountInSliceSql } from "@/lib/shared-employee-sql";
 import { query } from "@/lib/db";
 import { ALPHAA_REGION_WHERE } from "@/lib/alphaa-platform-sql";
 import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
@@ -64,7 +65,8 @@ const SHEETS_EXPORT_QUERY = `
       sma.mobile_number,
       sma.status
     FROM temp_social_media_accounts sma
-    INNER JOIN temp_users u ON sma.user_id = u.id
+    INNER JOIN ${TEMP_USER_SLICES} u
+      ON u.id = sma.user_id AND ${accountInSliceSql("sma", "u")}
     WHERE u.role = 'employee'
       AND u.is_active = TRUE
       AND sma.is_spare = FALSE

@@ -1,3 +1,4 @@
+import { fetchEmployeeSharedSettings } from "@/lib/shared-employees-data";
 import type { OpProjectAccessInput } from "@/types/admin";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -86,7 +87,13 @@ export default async function AdminEmployeeDetailPage({
       ? await fetchActiveAccountCountsByPlatform(id)
       : ({} as Record<string, number>);
 
+  const shared =
+    user.role === "employee"
+      ? await fetchEmployeeSharedSettings(id)
+      : { is_shared: false, extra_places: [] };
+
   const initial: EmployeeFormInitial = {
+    ...shared,
     id: user.id,
     full_name: user.full_name,
     email: user.email,

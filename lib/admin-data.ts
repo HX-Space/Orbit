@@ -1,3 +1,4 @@
+import { fetchEmployeeSharedSettings } from "@/lib/shared-employees-data";
 import { query, queryOne } from "@/lib/db";
 import {
   addDaysToIsoDate,
@@ -241,6 +242,7 @@ export async function fetchAdminEmployeesList(
          WHERE oc.user_id = u.id
       ) AS op_access,
       u.current_level,
+      u.is_shared,
       (u.target_x_count + u.target_facebook_personal_count + u.target_facebook_umbrella_count
         + u.target_instagram_count + u.target_tiktok_count)::int AS target_accounts_sum,
       COALESCE(acc.account_count, 0)::int AS account_count,
@@ -286,6 +288,7 @@ export async function fetchAdminEmployeesList(
       op_countries: string[] | null;
       op_access: { slug: string | null; country: string }[] | null;
       current_level: number;
+      is_shared: boolean;
       target_accounts_sum: number;
       account_count: number;
       plan_account_count: number;
@@ -373,6 +376,7 @@ export async function fetchAdminEmployeesList(
       countries,
       countryGroups: opCountryGroups.length > 1 ? opCountryGroups : undefined,
       current_level: r.current_level,
+      is_shared: r.is_shared === true,
       target_accounts_sum: r.target_accounts_sum,
       account_count: r.account_count,
       plan_account_count: r.plan_account_count,
@@ -542,8 +546,13 @@ export async function fetchAdminEmployeeEditorBundle(
     fetchEmployeeCreateProjectOptions(),
     fetchActiveAccountCountsByPlatform(userId),
   ]);
+  const shared =
+    user.role === "employee"
+      ? await fetchEmployeeSharedSettings(userId)
+      : { is_shared: false, extra_places: [] };
 
   const profile: EmployeeFormInitial = {
+    ...shared,
     id: user.id,
     full_name: user.full_name,
     email: user.email,

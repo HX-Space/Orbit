@@ -1,3 +1,4 @@
+import { TEMP_USER_SLICES, accountInSliceSql } from "@/lib/shared-employee-sql";
 import { query, queryOne } from "@/lib/db";
 import {
   ALPHAA_LEGACY_COUNTRY,
@@ -227,13 +228,14 @@ export async function assertManagerCanViewHolder(
     );
   }
 
-  // Main (ALPHAA) holder: region 'Alphaa' or also a Main handler (main_country).
+  // Main (ALPHAA) holder: works in Main (home project, or a shared employee's extra place).
   if (!sameProject("Alphaa", managerRegion)) return false;
   const row = await queryOne<{ country: string | null }>(
     `SELECT ${ALPHAA_LEGACY_COUNTRY} AS country
-       FROM temp_users u
+       FROM ${TEMP_USER_SLICES} u
       WHERE u.id = $1
-        AND ${ALPHAA_REGION_WHERE}`,
+        AND ${ALPHAA_REGION_WHERE}
+      LIMIT 1`,
     [holderId]
   );
   if (!row) return false;
@@ -258,7 +260,8 @@ export async function assertManagerCanSpareAccount(
     }>(
       `SELECT u.country, u.region
          FROM temp_social_media_accounts a
-         INNER JOIN temp_users u ON u.id = a.user_id
+         INNER JOIN ${TEMP_USER_SLICES} u
+           ON u.id = a.user_id AND ${accountInSliceSql("a", "u")}
         WHERE a.id = $1`,
       [accountId]
     );
@@ -272,12 +275,13 @@ export async function assertManagerCanSpareAccount(
     );
   }
 
-  // Main (ALPHAA) account: owned by a Main holder (region 'Alphaa' or main_country).
+  // Main (ALPHAA) account: the account belongs to Main.
   if (!sameProject("Alphaa", await fetchManagerRegion(managerId))) return false;
   const row = await queryOne<{ country: string | null }>(
     `SELECT ${ALPHAA_LEGACY_COUNTRY} AS country
        FROM temp_social_media_accounts sma
-       INNER JOIN temp_users u ON u.id = sma.user_id
+       INNER JOIN ${TEMP_USER_SLICES} u
+         ON u.id = sma.user_id AND ${accountInSliceSql("sma", "u")}
       WHERE sma.id = $1
         AND ${ALPHAA_REGION_WHERE}`,
     [accountId]

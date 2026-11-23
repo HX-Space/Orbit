@@ -138,6 +138,14 @@ export function EmployeeTableRow({
             <div className="min-w-0">
               <p className="flex flex-wrap items-center gap-2 text-[14px] font-semibold text-[var(--color-ink)]">
                 <span>{row.full_name}</span>
+                {row.is_shared ? (
+                  <span
+                    className="inline-flex rounded-full bg-[var(--color-emerald-tint)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-emerald)]"
+                    title="Works in more than one project or country"
+                  >
+                    Shared
+                  </span>
+                ) : null}
                 {isAlphaa ? (
                   <span className="inline-flex rounded-full bg-[var(--color-cream-tint)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-muted)]">
                     {MAIN_PROJECT_LABEL}

@@ -1,5 +1,10 @@
 import { query } from "@/lib/db";
 import {
+  TEMP_USER_SLICES,
+  accountInSliceSql,
+  homeSliceSql,
+} from "@/lib/shared-employee-sql";
+import {
   TEMP_USER_COUNTRY,
   tempUserCountryInList,
 } from "@/lib/temp-country-sql";
@@ -98,15 +103,17 @@ export async function fetchTempCountryCoverage(
     }>(
       `SELECT
          ${TEMP_USER_COUNTRY} AS country,
-         COUNT(DISTINCT u.id)::text AS employees,
+         -- Shared employees count as a person in their home project only.
+         COUNT(DISTINCT u.id) FILTER (WHERE ${homeSliceSql("u")})::text AS employees,
          COUNT(a.id) FILTER (WHERE a.platform = 'x')::text AS x,
          COUNT(a.id) FILTER (WHERE a.platform = 'facebook_personal')::text AS facebook_personal,
          COUNT(a.id) FILTER (WHERE a.platform = 'facebook_umbrella')::text AS facebook_umbrella,
          COUNT(a.id) FILTER (WHERE a.platform = 'instagram')::text AS instagram,
          COUNT(a.id) FILTER (WHERE a.platform = 'tiktok')::text AS tiktok
-       FROM temp_users u
+       FROM ${TEMP_USER_SLICES} u
        LEFT JOIN temp_social_media_accounts a
          ON a.user_id = u.id
+        AND ${accountInSliceSql("a", "u")}
         AND a.status = 'active'
         AND a.is_spare = FALSE
       WHERE LOWER(u.role) = 'employee'
@@ -145,14 +152,15 @@ export async function fetchTempCountryCoverage(
          u.target_facebook_umbrella_count,
          u.target_instagram_count,
          u.target_tiktok_count
-       FROM temp_users u
+       FROM ${TEMP_USER_SLICES} u
        LEFT JOIN temp_social_media_accounts a
          ON a.user_id = u.id
+        AND ${accountInSliceSql("a", "u")}
         AND a.status = 'active'
         AND a.is_spare = FALSE
       WHERE LOWER(u.role) = 'employee'
         AND u.is_active = TRUE${regionClause}${sqlCountryClause}
-      GROUP BY u.id, u.full_name, u.email, ${TEMP_USER_COUNTRY},
+      GROUP BY u.id, u.region, u.full_name, u.email, ${TEMP_USER_COUNTRY},
                u.target_x_count, u.target_facebook_personal_count,
                u.target_facebook_umbrella_count, u.target_instagram_count,
                u.target_tiktok_count
@@ -176,14 +184,16 @@ export async function fetchTempCountryCoverage(
       countryParamIndex === null
         ? `SELECT COUNT(a.id)::text AS spare
              FROM temp_social_media_accounts a
-             INNER JOIN temp_users u ON u.id = a.user_id
+             INNER JOIN ${TEMP_USER_SLICES} u
+               ON u.id = a.user_id AND ${accountInSliceSql("a", "u")}
             WHERE a.is_spare = TRUE
               AND a.status = 'active'
               AND LOWER(u.role) = 'employee'
               AND u.is_active = TRUE${regionClause}`
         : `SELECT COUNT(a.id)::text AS spare
              FROM temp_social_media_accounts a
-             INNER JOIN temp_users u ON u.id = a.user_id
+             INNER JOIN ${TEMP_USER_SLICES} u
+               ON u.id = a.user_id AND ${accountInSliceSql("a", "u")}
             WHERE a.is_spare = TRUE
               AND a.status = 'active'
               AND LOWER(u.role) = 'employee'

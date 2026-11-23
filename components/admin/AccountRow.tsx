@@ -8,6 +8,7 @@ import { PLATFORMS } from "@/lib/platform-config";
 import { adminSocialAccountToInput } from "@/lib/admin-account-input";
 import { AccountDeleteButton } from "@/components/admin/AccountDeleteButton";
 import { AccountEditModal } from "@/components/admin/AccountEditModal";
+import { AccountPlaceSelect } from "@/components/admin/AccountPlaceSelect";
 import { AccountCategoryBadge } from "@/components/admin/AccountCategoryBadge";
 import { AccountSpareBadge } from "@/components/admin/AccountSpareBadge";
 import { AccountSpareToggleButton } from "@/components/admin/AccountSpareToggleButton";
@@ -38,6 +39,16 @@ export function AccountRow({
           <span>{extractPlatformLabel(account.platform)}</span>
           <AccountSpareBadge isSpare={account.is_spare} />
         </div>
+        {account.place ? (
+          <div className="mt-1.5">
+            <AccountPlaceSelect
+              accountId={account.id}
+              place={account.place}
+              readOnly={readOnly}
+              onChanged={onChanged}
+            />
+          </div>
+        ) : null}
       </td>
       <td className="px-4 py-2.5 text-[13px] text-[var(--color-ink)]">
         {account.username || "—"}

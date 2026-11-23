@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { updateEmployeeProfile } from "@/actions/admin";
+import { updateEmployeeSharedPlaces } from "@/actions/shared-employees";
+import { SharedEmployeeFields } from "@/components/admin/SharedEmployeeFields";
 import { updateAlphaaEmployeeProfile } from "@/actions/admin-alphaa";
 import { alphaaRoleLabelFromRole } from "@/lib/admin-alphaa-roles";
 import { EMPLOYMENT_STATUSES, EMPLOYMENT_STATUS_LABELS } from "@/lib/employment-status";
@@ -105,6 +107,8 @@ export function EmployeeForm({
       region:
         normalizeProjectRegion(initial.region) ??
         (initial.country ? setupRegionForCountry(initial.country) : ""),
+      is_shared: initial.is_shared ?? false,
+      extra_places: initial.extra_places ?? [],
     }),
     [initial]
   );
@@ -271,6 +275,17 @@ export function EmployeeForm({
     // Main project = first picked; older single-project fields follow it.
     const opMain = opSaved[0] ?? null;
 
+    const canEditShared = !isAlphaa && canChangeProject && form.role === "employee";
+    const sharedPlaces = form.extra_places.filter((place) => place.region && place.country);
+    const sharedChanged =
+      canEditShared &&
+      (form.is_shared !== base.is_shared ||
+        JSON.stringify(form.extra_places) !== JSON.stringify(base.extra_places));
+    if (sharedChanged && form.is_shared && sharedPlaces.length === 0) {
+      toast.error("Pick a project and country this shared employee also works in.");
+      return;
+    }
+
     startTransition(async () => {
       try {
         if (isAlphaa) {
@@ -316,6 +331,12 @@ export function EmployeeForm({
             region: showCountryFields || isManagerRole ? form.region : undefined,
           };
           await updateEmployeeProfile(initial.id, payload);
+          if (sharedChanged) {
+            await updateEmployeeSharedPlaces(initial.id, {
+              isShared: form.is_shared,
+              places: sharedPlaces,
+            });
+          }
         }
         toast.success("Profile saved.");
         router.refresh();
@@ -528,6 +549,18 @@ export function EmployeeForm({
             className={fieldClass}
           />
         </label>
+
+        {!isAlphaa && canChangeProject && form.role === "employee" ? (
+          <SharedEmployeeFields
+            isShared={form.is_shared}
+            places={form.extra_places}
+            projects={projects}
+            onChange={(next) =>
+              setForm((f) => ({ ...f, is_shared: next.isShared, extra_places: next.places }))
+            }
+            fieldClass={fieldClass}
+          />
+        ) : null}
 
         {isManagerRole && canChangeProject ? (
           <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-[var(--color-muted)]">

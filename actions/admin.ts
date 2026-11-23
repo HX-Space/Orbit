@@ -874,9 +874,14 @@ export async function getAdminEmployeeEditorBundle(
 export async function getAdminEmployeeAccounts(
   userId: number
 ): Promise<AdminSocialAccountListItem[]> {
-  await requireAdminSession("canRead");
+  const { actorRole } = await requireAdminSession("canRead");
   if (!Number.isFinite(userId)) return [];
-  return fetchAdminEmployeeAccounts(userId);
+  const accounts = await fetchAdminEmployeeAccounts(userId);
+  // Only Admin / Head of Department may move a shared employee's account to another place.
+  if (actorRole !== "admin" && actorRole !== "hoo") return accounts;
+  return accounts.map((account) =>
+    account.place ? { ...account, place: { ...account.place, canChange: true } } : account
+  );
 }
 
 export async function deleteEmployee(user_id: number): Promise<void> {

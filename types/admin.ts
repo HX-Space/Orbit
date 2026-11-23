@@ -57,6 +57,8 @@ export type AdminEmployeeListRow = {
   /** Countries grouped by project (Operation Managers with several projects). */
   countryGroups?: EmployeeCountryGroup[];
   current_level: number;
+  /** Shared employee: works in more than one project / country. */
+  is_shared?: boolean;
   target_accounts_sum: number;
   /** All accounts (incl. spare). Accounts themselves load when the row opens. */
   account_count: number;
@@ -347,6 +349,10 @@ export type EmployeeFormInitial = {
   country: string;
   /** Saved project region (temp_users.region). */
   region: string;
+  /** "Shared employee": works in more than one project / country. */
+  is_shared?: boolean;
+  /** Shared employees: the extra projects / countries they work in. */
+  extra_places?: SharedPlace[];
   /** Bumps when the user row changes so the parent can reset client form state via `key`. */
   updated_at: string;
 };
@@ -978,6 +984,25 @@ export type AdminSocialAccountListItem = {
   account_scope: AccountScope;
   status: "active" | "archived" | "suspended";
   is_spare: boolean;
+  /** Shared employees only: which of their places this account counts for. */
+  place?: AccountPlaceInfo;
+};
+
+/** One project / country a shared employee works in. */
+export type SharedPlace = { region: string; country: string };
+
+export type SharedPlaceOption = SharedPlace & {
+  key: string;
+  label: string;
+  isHome: boolean;
+};
+
+export type AccountPlaceInfo = {
+  /** Key of the place the account counts for (see sharedPlaceKey). */
+  key: string;
+  options: SharedPlaceOption[];
+  /** Admin / Head of Department may move the account to another place. */
+  canChange: boolean;
 };
 
 export type AdminSpareAccountListItem = {

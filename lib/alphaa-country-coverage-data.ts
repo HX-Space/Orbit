@@ -1,3 +1,4 @@
+import { TEMP_USER_SLICES, accountInSliceSql, homeSliceSql } from "@/lib/shared-employee-sql";
 import {
   emptyAlphaaExtraPlatformCounts,
   parseAlphaaExtraPlatformRow,
@@ -74,9 +75,11 @@ export async function fetchAlphaaCountryActuals(
     query<{ country: string; employees: string }>(
       `SELECT
          ${ALPHAA_LEGACY_COUNTRY} AS country,
-         COUNT(DISTINCT u.id)::text AS employees
-       FROM temp_users u
-       INNER JOIN temp_social_media_accounts sma ON sma.user_id = u.id
+         -- Shared employees count as a person in their home project only.
+         COUNT(DISTINCT u.id) FILTER (WHERE ${homeSliceSql("u")})::text AS employees
+       FROM ${TEMP_USER_SLICES} u
+       INNER JOIN temp_social_media_accounts sma
+         ON sma.user_id = u.id AND ${accountInSliceSql("sma", "u")}
        WHERE ${ALPHAA_COVERAGE_ACCOUNT_WHERE}
          AND ${countrySqlClause(1)}
        GROUP BY ${ALPHAA_LEGACY_COUNTRY}`,
@@ -107,7 +110,8 @@ export async function fetchAlphaaCountryActuals(
          COUNT(sma.id) FILTER (WHERE ${ALPHAA_PLATFORM_IS_TIKTOK})::text AS tiktok,
          ${alphaaExtraPlatformCountColumns()}
        FROM temp_social_media_accounts sma
-       INNER JOIN temp_users u ON u.id = sma.user_id
+       INNER JOIN ${TEMP_USER_SLICES} u
+         ON u.id = sma.user_id AND ${accountInSliceSql("sma", "u")}
        WHERE ${ALPHAA_COVERAGE_ACCOUNT_WHERE}
          AND ${countrySqlClause(1)}
        GROUP BY ${ALPHAA_LEGACY_COUNTRY}`,
@@ -185,7 +189,8 @@ export async function fetchAlphaaSpareCount(
   const rows = await query<{ spare: string }>(
     `SELECT COUNT(*)::text AS spare
        FROM temp_social_media_accounts sma
-       INNER JOIN temp_users u ON u.id = sma.user_id
+       INNER JOIN ${TEMP_USER_SLICES} u
+         ON u.id = sma.user_id AND ${accountInSliceSql("sma", "u")}
       WHERE ${ALPHAA_REGION_WHERE}
         AND sma.is_spare IS TRUE
         AND ${countrySqlClause(1)}`,
@@ -233,8 +238,9 @@ export async function fetchAlphaaHolderActuals(
        COUNT(sma.id) FILTER (WHERE ${ALPHAA_PLATFORM_IS_INSTAGRAM})::text AS instagram,
        COUNT(sma.id) FILTER (WHERE ${ALPHAA_PLATFORM_IS_TIKTOK})::text AS tiktok,
        ${alphaaExtraPlatformCountColumns()}
-     FROM temp_users u
-     INNER JOIN temp_social_media_accounts sma ON sma.user_id = u.id
+     FROM ${TEMP_USER_SLICES} u
+     INNER JOIN temp_social_media_accounts sma
+       ON sma.user_id = u.id AND ${accountInSliceSql("sma", "u")}
      WHERE ${ALPHAA_COVERAGE_ACCOUNT_WHERE}
        AND ${countrySqlClause(1)}
      GROUP BY u.id, u.full_name, u.email, ${ALPHAA_LEGACY_COUNTRY}
@@ -290,7 +296,8 @@ export async function fetchAlphaaScopeActuals(countries: string[]): Promise<{
             sma.account_scope,
             COUNT(sma.id)::int AS n
        FROM temp_social_media_accounts sma
-       INNER JOIN temp_users u ON u.id = sma.user_id
+       INNER JOIN ${TEMP_USER_SLICES} u
+         ON u.id = sma.user_id AND ${accountInSliceSql("sma", "u")}
       WHERE ${ALPHAA_COVERAGE_ACCOUNT_WHERE}
         AND ${countrySqlClause(1)}
       GROUP BY u.id, ${ALPHAA_LEGACY_COUNTRY}, sma.platform, sma.account_scope`,

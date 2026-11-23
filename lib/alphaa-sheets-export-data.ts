@@ -1,3 +1,4 @@
+import { TEMP_USER_SLICES, accountInSliceSql } from "@/lib/shared-employee-sql";
 import { query } from "@/lib/db";
 import {
   ALPHAA_LEGACY_COUNTRY,
@@ -90,7 +91,8 @@ const ALPHAA_SHEETS_EXPORT_QUERY = `
       sma.rss,
       sma.dropbox
     FROM temp_social_media_accounts sma
-    INNER JOIN temp_users u ON u.id = sma.user_id
+    INNER JOIN ${TEMP_USER_SLICES} u
+      ON u.id = sma.user_id AND ${accountInSliceSql("sma", "u")}
     WHERE ${ALPHAA_REGION_WHERE}
       AND sma.is_spare = false
   ORDER BY country ASC NULLS LAST,
