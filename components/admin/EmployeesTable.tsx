@@ -83,7 +83,8 @@ export function EmployeesTable({
             ) : (
               rows.slice(0, visible).map((row) => (
                 <EmployeeTableRow
-                  key={`${row.source}-${row.id}`}
+                  // Shared employees have one row per place.
+                  key={`${row.source}-${row.id}-${row.place_key ?? "home"}`}
                   row={row}
                   holders={holders}
                   canManagePermissions={canManagePermissions}

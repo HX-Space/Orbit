@@ -1,4 +1,6 @@
 import { fetchEmployeeSharedSettings } from "@/lib/shared-employees-data";
+import { fetchSharedPlaceOptions } from "@/lib/admin-accounts-data";
+import { sharedPlaceKey } from "@/lib/shared-places";
 import { query, queryOne } from "@/lib/db";
 import {
   addDaysToIsoDate,
@@ -82,6 +84,15 @@ export async function fetchAdminHealthMetrics(): Promise<AdminHealthMetrics> {
   };
 }
 
+/** A shared employee also works in one of these projects (extra place). */
+function sharedPlaceRegionSql(regionsArraySql: string) {
+  return `(u.is_shared = TRUE AND EXISTS (
+    SELECT 1 FROM temp_user_extra_assignments x
+     WHERE x.user_id = u.id
+       AND LOWER(TRIM(x.region)) IN (SELECT LOWER(TRIM(r)) FROM unnest(${regionsArraySql}) r)
+  ))`;
+}
+
 export async function fetchAdminEmployeesList(
   filters: AdminEmployeeListFilters
 ): Promise<AdminEmployeeListRow[]> {
@@ -120,6 +131,7 @@ export async function fetchAdminEmployeesList(
     // (Sudan, Somalia, Palestine) pull Main staff into Africa / Asia.
     where.push(
       `(u.region = ANY($${regionParam}::text[])
+        OR ${sharedPlaceRegionSql(`$${regionParam}::text[]`)}
         OR (
           COALESCE(TRIM(u.region), '') = ''
           AND (
@@ -134,19 +146,30 @@ export async function fetchAdminEmployeesList(
     );
   } else if (region === "Alphaa") {
     params.push(["Alphaa"]);
-    where.push(`u.region = ANY($${params.length}::text[])`);
+    where.push(
+      `(u.region = ANY($${params.length}::text[])
+        OR ${sharedPlaceRegionSql(`$${params.length}::text[]`)})`
+    );
   } else if (region?.trim()) {
     // A project created in Strategy: people saved with its name.
     params.push(region.trim());
-    where.push(`LOWER(TRIM(COALESCE(u.region, ''))) = LOWER($${params.length})`);
+    where.push(
+      `(LOWER(TRIM(COALESCE(u.region, ''))) = LOWER($${params.length})
+        OR ${sharedPlaceRegionSql(`ARRAY[$${params.length}]::text[]`)})`
+    );
   }
   if (country) {
     params.push(country);
     const i = params.length;
     // Match the countries the table shows: own country, managed countries and
-    // Operation Manager countries (case/space-insensitive).
+    // Operation Manager countries (case/space-insensitive), and a shared
+    // employee's extra places.
     where.push(
       `(LOWER(TRIM(COALESCE(u.country, ''))) = LOWER(TRIM($${i}))
+        OR (u.is_shared = TRUE AND EXISTS (
+          SELECT 1 FROM temp_user_extra_assignments x
+           WHERE x.user_id = u.id AND LOWER(TRIM(x.country)) = LOWER(TRIM($${i}))
+        ))
         OR EXISTS (
           SELECT 1 FROM temp_manager_countries mc
            WHERE mc.user_id = u.id AND LOWER(TRIM(mc.country)) = LOWER(TRIM($${i}))
@@ -383,9 +406,84 @@ export async function fetchAdminEmployeesList(
     };
   });
 
-  return [...tempRows, ...alphaaRows].sort(
+  const expanded = await expandSharedEmployeeRows(tempRows, { region, country });
+  return [...expanded, ...alphaaRows].sort(
     (a, b) => a.full_name.localeCompare(b.full_name) || a.id - b.id
   );
+}
+
+/**
+ * Shared employees get one row per place they work (home + extra places), each
+ * with that place's project, country and account counts. With a region or
+ * country filter, only the matching places stay.
+ */
+async function expandSharedEmployeeRows(
+  rows: AdminEmployeeListRow[],
+  filters: { region?: string; country: string }
+): Promise<AdminEmployeeListRow[]> {
+  const sharedIds = rows.filter((row) => row.is_shared).map((row) => row.id);
+  if (sharedIds.length === 0) return rows;
+
+  const [places, accounts] = await Promise.all([
+    fetchSharedPlaceOptions(sharedIds),
+    query<{
+      user_id: number;
+      is_spare: boolean;
+      assigned_region: string | null;
+      assigned_country: string | null;
+    }>(
+      `SELECT user_id, is_spare, assigned_region, assigned_country
+         FROM temp_social_media_accounts
+        WHERE user_id = ANY($1::int[])`,
+      [sharedIds]
+    ),
+  ]);
+
+  const regionKey = filters.region?.trim().toLowerCase() ?? "";
+  const regionMatches = (value: string) => {
+    if (!regionKey) return true;
+    const v = value.trim().toLowerCase();
+    if (regionKey === "europe") return v === "europe" || v === "balkan";
+    return v === regionKey;
+  };
+  const countryMatches = (value: string) =>
+    !filters.country || value.trim().toLowerCase() === filters.country.trim().toLowerCase();
+
+  const out: AdminEmployeeListRow[] = [];
+  for (const row of rows) {
+    const options = row.is_shared ? places.get(row.id) : undefined;
+    if (!options || options.length < 2) {
+      out.push(row);
+      continue;
+    }
+    const home = options.find((option) => option.isHome) ?? options[0]!;
+    for (const place of options) {
+      if (!regionMatches(place.region) || !countryMatches(place.country)) continue;
+      const mine = accounts.filter(
+        (account) =>
+          account.user_id === row.id &&
+          sharedPlaceKey({
+            region: account.assigned_region?.trim() || home.region,
+            country: account.assigned_country?.trim() || home.country,
+          }) === place.key
+      );
+      const countries = mapEmployeeListCountries([place.country], {
+        source: "temp",
+        region: place.region,
+      });
+      out.push({
+        ...row,
+        region: place.region,
+        project: regionDisplayLabel(place.region) || row.project,
+        country: countries[0] ?? place.country,
+        countries,
+        place_key: place.key,
+        account_count: mine.length,
+        plan_account_count: mine.filter((account) => !account.is_spare).length,
+      });
+    }
+  }
+  return out;
 }
 
 export async function fetchTeamLeadOptions(): Promise<

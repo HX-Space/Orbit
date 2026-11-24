@@ -45,7 +45,9 @@ export function EmployeeTableRow({
   // Employees and Team Leaders hold accounts.
   const holdsAccounts = row.role === "employee" || row.role === "team_lead";
   const canExpand = holdsAccounts || row.account_count > 0;
-  const panelId = `employee-accounts-${row.source}-${row.id}`;
+  const panelId = `employee-accounts-${row.source}-${row.id}${
+    row.place_key ? `-${row.place_key.replace(/\W+/g, "-")}` : ""
+  }`;
   const canMarkSpare =
     !isAlphaa && Boolean(row.country && isTempPlanCountry(row.country));
   const planAccounts = row.plan_account_count;
@@ -64,7 +66,12 @@ export function EmployeeTableRow({
       (list) => {
         if (cancelled) return;
         setAccountsError(null);
-        setAccounts(list);
+        // A shared employee's row shows only the accounts of that row's place.
+        setAccounts(
+          row.place_key
+            ? list.filter((account) => !account.place || account.place.key === row.place_key)
+            : list
+        );
       },
       () => {
         if (!cancelled) setAccountsError("Could not load accounts.");

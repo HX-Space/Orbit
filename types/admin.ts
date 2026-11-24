@@ -34,6 +34,8 @@ export type AdminEmployeeListRow = {
   id: number;
   /** temp = Orbit roster; alphaa = Main project rows (also temp tables, region Alphaa). */
   source: "temp" | "alphaa";
+  /** Shared employees: the place this row is for (one row per place). */
+  place_key?: string;
   full_name: string;
   email: string;
   role: Role;

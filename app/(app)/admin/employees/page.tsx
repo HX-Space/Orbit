@@ -120,9 +120,18 @@ export default async function AdminEmployeesPage({
     });
   }
 
-  const counts = employeeListStatusCounts(listed);
+  // Shared employees have one row per place; counts and the import list count
+  // each person once (their first row, normally home).
+  const seen = new Set<string>();
+  const people = listed.filter((row) => {
+    const key = `${row.source}-${row.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const counts = employeeListStatusCounts(people);
   const rows = filterEmployeesByListStatus(listed, status);
-  const holders = listed
+  const holders = people
     .filter(
       (row) =>
         // Employees and Team Leaders hold accounts.
