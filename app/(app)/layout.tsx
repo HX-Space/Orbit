@@ -6,6 +6,7 @@ import {
   ROLE_LABELS,
 } from "@/lib/role-hierarchy";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { ViewAsBanner } from "@/components/layout/ViewAsBanner";
 import { queryOne } from "@/lib/db";
 import { ChangePasswordForm } from "./settings/components/ChangePasswordForm";
 
@@ -44,10 +45,20 @@ export default async function AppLayout({
   const email = session.user?.email ?? "";
   const role = (session.user?.role ?? "employee") as Role;
   const roleLabel = roleBadgeLabel(role);
-  const forceChange = await mustChangePassword(Number(session.user?.id));
+  // "View as" shows the person's pages, not their password reset.
+  const forceChange = session.viewAs
+    ? false
+    : await mustChangePassword(Number(session.user?.id));
 
   return (
     <div className="min-h-dvh bg-[var(--color-cream)]">
+      {session.viewAs ? (
+        <ViewAsBanner
+          name={name}
+          roleLabel={ROLE_LABELS[role] ?? role}
+          realName={session.viewAs.realName}
+        />
+      ) : null}
       <AppHeader
         name={name}
         email={email}

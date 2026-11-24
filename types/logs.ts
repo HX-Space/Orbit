@@ -13,6 +13,7 @@ export const ORBIT_LOG_ACTIONS = [
   "spare",
   "fit_to_plan",
   "strategy",
+  "view_as",
 ] as const;
 
 export type OrbitLogAction = (typeof ORBIT_LOG_ACTIONS)[number];

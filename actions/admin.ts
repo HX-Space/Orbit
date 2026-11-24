@@ -863,11 +863,10 @@ export async function getAdminEmployeeEditorBundle(
   const { actorRole } = await requireAdminSession("canRead");
   if (!Number.isFinite(userId)) return null;
   const bundle = await fetchAdminEmployeeEditorBundle(userId, source);
-  if (bundle?.source !== "temp") return bundle;
-  return {
-    ...bundle,
-    canChangeProject: actorRole === "admin" || actorRole === "hoo",
-  };
+  const isAdminOrHod = actorRole === "admin" || actorRole === "hoo";
+  if (!bundle) return bundle;
+  if (bundle.source !== "temp") return { ...bundle, canViewAs: isAdminOrHod };
+  return { ...bundle, canChangeProject: isAdminOrHod, canViewAs: isAdminOrHod };
 }
 
 /** Employees table: a person's accounts, loaded when their row is opened. */

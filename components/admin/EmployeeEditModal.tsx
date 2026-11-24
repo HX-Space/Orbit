@@ -7,6 +7,7 @@ import { adminEmployeePanelsForSource, adminRoleBadge } from "@/lib/admin-view";
 import { EmployeeEditModalTabs } from "@/components/admin/EmployeeEditModalTabs";
 import { EmployeeForm } from "@/components/admin/EmployeeForm";
 import { EmployeeProjectBadge } from "@/components/admin/EmployeeProjectBadge";
+import { ViewAsButton } from "@/components/admin/ViewAsButton";
 import { EmployeeTargetsForm } from "@/components/admin/EmployeeTargetsForm";
 import type {
   AdminEmployeePanel,
@@ -93,6 +94,7 @@ function EmployeeEditModalFrame({
                   Shared
                 </span>
               ) : null}
+              {bundle?.canViewAs ? <ViewAsButton userId={userId} name={title} /> : null}
             </div>
           </div>
           <motion.button

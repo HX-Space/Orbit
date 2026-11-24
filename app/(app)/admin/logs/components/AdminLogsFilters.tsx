@@ -24,6 +24,7 @@ const ACTION_LABELS: Record<(typeof ORBIT_LOG_ACTIONS)[number] | "all", string> 
   spare: "Spare",
   fit_to_plan: "Fit to plan",
   strategy: "Strategy",
+  view_as: "View as",
 };
 
 const RESOURCE_LABELS: Record<(typeof ORBIT_LOG_RESOURCES)[number] | "all", string> = {

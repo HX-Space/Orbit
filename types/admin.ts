@@ -737,6 +737,8 @@ export type AdminTempEmployeeEditorBundle = {
   activeCounts: Record<string, number>;
   /** Admin / Head of Department may move a Country Manager to another project. */
   canChangeProject?: boolean;
+  /** Admin / Head of Department may open Orbit as this person (read only). */
+  canViewAs?: boolean;
 };
 
 export type AdminAlphaaEmployeeEditorBundle = {
@@ -751,6 +753,8 @@ export type AdminAlphaaEmployeeEditorBundle = {
   managers: AdminManagerOption[];
   ops: AdminSupervisorOption[];
   admins: AdminSupervisorOption[];
+  /** Admin / Head of Department may open Orbit as this person (read only). */
+  canViewAs?: boolean;
 };
 
 export type AdminEmployeeEditorBundle =

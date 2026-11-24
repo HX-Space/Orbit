@@ -19,7 +19,9 @@ type DbUserAuthRow = {
   role: Role;
 };
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const VIEW_AS_ROLES: Role[] = ["admin", "hoo"];
+
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   trustHost: true,
@@ -77,10 +79,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: Role }).role;
+        delete token.viewAsId;
+        delete token.viewAs;
         return token;
       }
 
@@ -104,12 +108,63 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!row) return null;
         token.role = row.role;
       }
+
+      // "View as": an Admin / HOD sees Orbit as another person, read only.
+      // token.id / token.role always stay the real admin.
+      if (trigger === "update" && session && "viewAsUserId" in session) {
+        const next = Number(session.viewAsUserId);
+        if (
+          session.viewAsUserId != null &&
+          Number.isFinite(next) &&
+          next !== userId &&
+          VIEW_AS_ROLES.includes(token.role as Role)
+        ) {
+          token.viewAsId = next;
+        } else {
+          delete token.viewAsId;
+        }
+      }
+      if (token.viewAsId && !VIEW_AS_ROLES.includes(token.role as Role)) {
+        delete token.viewAsId;
+      }
+      if (token.viewAsId) {
+        const target = await queryOne<{ id: number; full_name: string; email: string; role: Role }>(
+          `SELECT id, full_name, email, role FROM temp_users WHERE id = $1`,
+          [token.viewAsId]
+        ).catch(() => null);
+        if (target) {
+          token.viewAs = {
+            id: target.id,
+            name: target.full_name,
+            email: target.email,
+            role: target.role,
+          };
+        } else {
+          delete token.viewAsId;
+          delete token.viewAs;
+        }
+      } else {
+        delete token.viewAs;
+      }
       return token;
     },
     session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
+        if (token.viewAs) {
+          // Every page sees the viewed person; viewAs keeps the real admin.
+          session.viewAs = {
+            realId: token.id as string,
+            realName: session.user.name ?? "",
+            realRole: token.role as Role,
+          };
+          const viewed = token.viewAs as { id: number; name: string; email: string; role: Role };
+          session.user.id = String(viewed.id);
+          session.user.role = viewed.role;
+          session.user.name = viewed.name;
+          session.user.email = viewed.email;
+        }
       }
       return session;
     },

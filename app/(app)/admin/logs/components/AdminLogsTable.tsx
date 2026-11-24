@@ -20,6 +20,7 @@ const ACTION_LABEL: Record<OrbitActionLogRow["action"], string> = {
   spare: "Spare",
   fit_to_plan: "Fit to plan",
   strategy: "Strategy",
+  view_as: "View as",
 };
 
 /** "replacedAccounts" -> "Replaced accounts", "holderId" -> "Holder id". */
