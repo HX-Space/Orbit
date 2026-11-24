@@ -13,7 +13,9 @@ export const pool = new Pool({
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: process.env.DATABASE_PORT ? Number(process.env.DATABASE_PORT) : 5432,
-  max: 150,
+  // Each Vercel instance has its own pool; a small one keeps the total under
+  // the database's connection limit ("service temporarily unavailable").
+  max: Number(process.env.DB_POOL_MAX) || 10,
   idleTimeoutMillis: 30000,
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
 });
@@ -31,6 +33,10 @@ const ALWAYS_ALLOWED_WRITE = /^\s*insert\s+into\s+temp_action_logs\b/i;
 function changesData(text: string): boolean {
   const sql = text.replace(/^(\s|--[^\n]*\n)*/, "");
   if (/^(select|show|explain|begin|commit|rollback|savepoint|release|set|values)\b/i.test(sql)) {
+    return false;
+  }
+  // "Create if missing" checks some pages run on every load change nothing.
+  if (/^create\s+(table|index)\s+if\s+not\s+exists\b/i.test(sql)) {
     return false;
   }
   if (/^with\b/i.test(sql)) return /\b(insert|update|delete|merge|truncate)\b/i.test(sql);

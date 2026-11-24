@@ -6,15 +6,62 @@ import { getExtraAccountHolders } from "@/actions/extra-accounts";
 import { ExtraAccountsDialog } from "@/components/admin/ExtraAccountsDialog";
 import type { ExtraAccountHolder } from "@/types/admin";
 
-/** Navbar "Extra": loads in the background so pages stay fast. */
+const CACHE_KEY = "orbit-extra-accounts";
+const CACHE_MS = 10 * 60 * 1000;
+
+function readCache(): ExtraAccountHolder[] | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as { at: number; holders: ExtraAccountHolder[] };
+    return Date.now() - saved.at < CACHE_MS ? saved.holders : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(holders: ExtraAccountHolder[]) {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), holders }));
+  } catch {
+    // Storage blocked: the badge just reloads next time.
+  }
+}
+
+/**
+ * Navbar "Extra". The badge comes from a 10-minute browser cache, so moving
+ * between pages does not recalculate the whole Overview each time; opening the
+ * window always loads fresh data.
+ */
 export function AdminHeaderExtraButton() {
   const [open, setOpen] = useState(false);
   const [holders, setHolders] = useState<ExtraAccountHolder[] | null>(null);
 
+  function load() {
+    return getExtraAccountHolders().then(
+      (list) => {
+        writeCache(list);
+        setHolders(list);
+      },
+      () => setHolders((current) => current ?? [])
+    );
+  }
+
   useEffect(() => {
     let cancelled = false;
+    const cached = readCache();
+    if (cached) {
+      void Promise.resolve(cached).then((list) => !cancelled && setHolders(list));
+      return () => {
+        cancelled = true;
+      };
+    }
     getExtraAccountHolders().then(
-      (list) => !cancelled && setHolders(list),
+      (list) => {
+        if (cancelled) return;
+        writeCache(list);
+        setHolders(list);
+      },
       () => !cancelled && setHolders([])
     );
     return () => {
@@ -29,7 +76,10 @@ export function AdminHeaderExtraButton() {
         type="button"
         aria-label={count > 0 ? `View ${count} people with extra accounts` : "View extra accounts"}
         aria-current={open ? "true" : undefined}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOpen(true);
+          void load();
+        }}
         layout
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
