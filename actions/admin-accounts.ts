@@ -103,7 +103,7 @@ export async function createAdminSocialAccount(
     }
 
     const user = await queryOne<{ id: number }>(
-      `SELECT id FROM temp_users WHERE id = $1 AND role = 'employee'`,
+      `SELECT id FROM temp_users WHERE id = $1 AND role IN ('employee', 'team_lead')`,
       [userId]
     );
     if (!user) return { error: "Employee not found." };

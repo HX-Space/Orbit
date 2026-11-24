@@ -125,7 +125,9 @@ export default async function AdminEmployeesPage({
   const holders = listed
     .filter(
       (row) =>
-        row.role === "employee" && (row.is_active || row.source === "alphaa")
+        // Employees and Team Leaders hold accounts.
+        (row.role === "employee" || row.role === "team_lead") &&
+        (row.is_active || row.source === "alphaa")
     )
     .map((row) => ({
       id: row.id,

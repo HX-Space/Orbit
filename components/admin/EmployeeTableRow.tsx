@@ -40,7 +40,9 @@ export function EmployeeTableRow({
   const [expanded, setExpanded] = useState(false);
   const initial = (row.full_name.trim()[0] ?? "?").toUpperCase();
   const isAlphaa = row.source === "alphaa";
-  const canExpand = row.role === "employee" || row.account_count > 0;
+  // Employees and Team Leaders hold accounts.
+  const holdsAccounts = row.role === "employee" || row.role === "team_lead";
+  const canExpand = holdsAccounts || row.account_count > 0;
   const panelId = `employee-accounts-${row.source}-${row.id}`;
   const canMarkSpare =
     !isAlphaa && Boolean(row.country && isTempPlanCountry(row.country));
@@ -86,7 +88,7 @@ export function EmployeeTableRow({
   )
     ? holders
     : [rowHolder, ...holders];
-  const canImport = row.role === "employee";
+  const canImport = holdsAccounts;
 
   function toggle() {
     if (!canExpand) return;

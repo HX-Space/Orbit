@@ -188,7 +188,7 @@ async function importTempHolderAccounts(input: {
   rows: BulkImportAccountDraft[];
 }): Promise<{ error?: string; imported?: number }> {
   const employee = await queryOne<{ id: number; region: string | null }>(
-    `SELECT id, region FROM temp_users WHERE id = $1 AND role = 'employee'`,
+    `SELECT id, region FROM temp_users WHERE id = $1 AND role IN ('employee', 'team_lead')`,
     [input.holderId]
   );
   if (!employee) return { error: "Account holder not found." };

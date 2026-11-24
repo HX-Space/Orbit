@@ -254,7 +254,7 @@ export async function fetchAdminEmployeesList(
              count(*) FILTER (WHERE is_spare = FALSE) AS plan_account_count
         FROM temp_social_media_accounts
        GROUP BY user_id
-    ) acc ON acc.user_id = u.id AND u.role = 'employee'
+    ) acc ON acc.user_id = u.id AND u.role IN ('employee', 'team_lead')
     LEFT JOIN temp_users tl ON tl.id = u.team_lead_id
     LEFT JOIN temp_users mgr ON mgr.id = u.manager_id
     LEFT JOIN temp_users tlm ON tlm.id = tl.manager_id
