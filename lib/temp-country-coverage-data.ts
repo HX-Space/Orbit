@@ -48,7 +48,7 @@ export type TempCoverageRegionScope =
   /** @deprecated Use AfricaAndEurope */
   | "AfricaAndBalkan";
 
-function tempRegionClause(scope: TempCoverageRegionScope | undefined) {
+export function tempRegionClause(scope: TempCoverageRegionScope | undefined) {
   if (scope === "Africa") {
     return ` AND LOWER(TRIM(u.region)) = 'africa'`;
   }

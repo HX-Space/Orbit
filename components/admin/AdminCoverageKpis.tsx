@@ -1,4 +1,5 @@
 import { AdminKpiTile } from "@/components/admin/AdminKpiTile";
+import { ExtraAccountsKpi } from "@/components/admin/ExtraAccountsKpi";
 import type { AdminCoverageKpisProps } from "@/types/admin";
 
 function remaining(actual: number, target: number) {
@@ -16,7 +17,7 @@ export function AdminCoverageKpis({ coverage }: AdminCoverageKpisProps) {
   ).length;
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 xl:grid-cols-7">
       <AdminKpiTile
         icon="users"
         title="Employees"
@@ -26,8 +27,13 @@ export function AdminCoverageKpis({ coverage }: AdminCoverageKpisProps) {
       <AdminKpiTile
         icon="layers"
         title="Accounts"
-        value={`${totals.totalAccounts.actual} / ${totals.totalAccounts.target}`}
-        subtitle="Added vs planned slots"
+        // Same count as the Google Sheets sync (every non-spare account).
+        value={`${coverage.sheetAccountCount ?? totals.totalAccounts.actual} / ${totals.totalAccounts.target}`}
+        subtitle={
+          coverage.sheetAccountCount === undefined
+            ? "Added vs planned slots"
+            : "All accounts sent to Google Sheets vs planned"
+        }
       />
       <AdminKpiTile
         icon="clipboard"
@@ -35,6 +41,7 @@ export function AdminCoverageKpis({ coverage }: AdminCoverageKpisProps) {
         value={String(remaining(totals.totalAccounts.actual, totals.totalAccounts.target))}
         subtitle="Account slots left on the plan"
       />
+      {coverage.extraHolders ? <ExtraAccountsKpi holders={coverage.extraHolders} /> : null}
       <AdminKpiTile
         icon="spare"
         title="Spare"

@@ -536,9 +536,25 @@ export type AdminCountryCoverageTotals = Omit<
   "country" | "language" | "onPlan" | "holders"
 >;
 
+/** A person holding more accounts on a platform than their planned slot. */
+export type ExtraAccountHolder = {
+  id: number;
+  source: "temp" | "alphaa";
+  name: string;
+  project: string;
+  country: string;
+  countryManager: string | null;
+  platforms: { label: string; actual: number; target: number; extra: number }[];
+  extraTotal: number;
+};
+
 export type AdminCountryCoverage = {
   rows: AdminCountryCoverageRow[];
   totals: AdminCountryCoverageTotals;
+  /** Accounts the Google Sheets sync writes for this tab (same rule as the export). */
+  sheetAccountCount?: number;
+  /** People with more accounts than their slot on a platform. */
+  extraHolders?: ExtraAccountHolder[];
   onHoldCount: number;
   /** Active Africa/Europe accounts marked spare (excluded from plan actuals). */
   spareCount: number;

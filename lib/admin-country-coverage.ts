@@ -1,3 +1,4 @@
+import { extraAccountHolders, fetchSheetAccountCount } from "@/lib/overview-sheet-count";
 import {
   fetchAlphaaCountryActuals,
   fetchAlphaaHolderActuals,
@@ -757,9 +758,21 @@ export async function fetchAdminCountryCoverage(
     }
   );
 
+  const [sheetAccountCount, extraHolders] = await Promise.all([
+    fetchSheetAccountCount({
+      region: filter?.region,
+      tempRegionScope,
+      projectRegion,
+      countries: filter?.countries ?? null,
+    }),
+    extraAccountHolders(coverageRows),
+  ]);
+
   return {
     rows: coverageRows,
     totals,
+    sheetAccountCount,
+    extraHolders,
     onHoldCount:
       tempCoverage.onHoldCount +
       customCoverage.reduce((sum, coverage) => sum + coverage.onHoldCount, 0),
