@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getAdminEmployeeAccounts } from "@/actions/admin";
-import { ChevronDown } from "lucide-react";
+import { Loader2, ChevronDown } from "lucide-react";
 import { adminRoleBadge } from "@/lib/admin-view";
 import { EmployeeCountryCell } from "@/components/admin/EmployeeCountryCell";
 import { EmployeeProjectCell } from "@/components/admin/EmployeeProjectCell";
@@ -242,9 +242,24 @@ export function EmployeeTableRow({
               <p className="text-[14px] text-[var(--color-coral)]">{accountsError}</p>
             ) : accounts === null ? (
               <div
-                className="h-24 animate-pulse rounded-xl bg-[var(--color-cream-tint)]"
+                role="status"
+                aria-live="polite"
                 aria-label={`Loading accounts for ${row.full_name}`}
-              />
+                className="flex flex-col gap-3 rounded-xl bg-[var(--color-surface)] p-4"
+              >
+                <p className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--color-muted)]">
+                  <Loader2 className="h-4 w-4 animate-spin text-[var(--color-emerald)]" aria-hidden="true" />
+                  Loading accounts for {row.full_name}…
+                </p>
+                {[0, 1, 2].map((line) => (
+                  <div
+                    key={line}
+                    className="h-9 animate-pulse rounded-lg bg-[var(--color-hairline)]"
+                    style={{ opacity: 1 - line * 0.25 }}
+                    aria-hidden="true"
+                  />
+                ))}
+              </div>
             ) : (
               <EmployeeAccountsPanel
                 userId={row.id}
