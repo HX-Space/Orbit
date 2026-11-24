@@ -92,7 +92,19 @@ type HolderQueryRow = {
   target_facebook_umbrella_count: number;
   target_instagram_count: number;
   target_tiktok_count: number;
+  home_region: string | null;
+  home_country: string | null;
 };
+
+/** The place an account counts for: its own assignment, else the holder's home. */
+function accountPlaceKey(
+  account: { assigned_region?: string | null; assigned_country?: string | null },
+  home: { region: string | null; country: string | null }
+) {
+  const region = account.assigned_region?.trim() || home.region?.trim() || "";
+  const country = account.assigned_country?.trim() || home.country?.trim() || "";
+  return `${region.toLowerCase()}|${country.toLowerCase()}`;
+}
 
 export async function fetchManagerHomeGroups(
   managerId: number
@@ -100,23 +112,27 @@ export async function fetchManagerHomeGroups(
   const managerCountries = await fetchManagerCountries(managerId);
   if (!managerCountries.length) return [];
 
-  const scope = managerEmployeeScopeSql("temp_users", "$1", "$2");
+  // One row per place a person works (shared employees can be in two of this
+  // manager's countries); each row only shows that place's accounts.
+  const scope = managerEmployeeScopeSql("u", "$1", "$2");
   const holders = await query<HolderQueryRow>(
-    `SELECT id,
-            full_name,
-            email,
-            country,
-            language,
-            region,
-            employment_status,
-            target_x_count,
-            target_facebook_personal_count,
-            target_facebook_umbrella_count,
-            target_instagram_count,
-            target_tiktok_count
-       FROM temp_users
+    `SELECT u.id,
+            u.full_name,
+            u.email,
+            u.country,
+            u.language,
+            u.region,
+            u.employment_status,
+            u.target_x_count,
+            u.target_facebook_personal_count,
+            u.target_facebook_umbrella_count,
+            u.target_instagram_count,
+            u.target_tiktok_count,
+            u.home_region,
+            u.home_country
+       FROM ${TEMP_USER_SLICES} u
       WHERE ${scope}
-      ORDER BY country ASC, full_name ASC`,
+      ORDER BY u.country ASC, u.full_name ASC`,
     [managerId, managerCountries]
   );
 
@@ -154,7 +170,11 @@ export async function fetchManagerHomeGroups(
   for (const holder of holders) {
     const country = holder.country ?? "";
     if (!groups.has(country)) continue;
-    const holderAccounts = accountsByUser.get(holder.id) ?? [];
+    const placeKey = `${(holder.region ?? "").trim().toLowerCase()}|${country.trim().toLowerCase()}`;
+    const home = { region: holder.home_region, country: holder.home_country };
+    const holderAccounts = (accountsByUser.get(holder.id) ?? []).filter(
+      (account) => accountPlaceKey(account, home) === placeKey
+    );
     const targets = targetsFromCounts(holder);
     const publicAccounts: ManagerAccountListItem[] = holderAccounts.map(
       (account) => ({
@@ -303,7 +323,7 @@ export async function assertManagerCanEditEmployee(
   const scope = managerEmployeeScopeSql("e", "$1", "$3");
   const rows = await query<{ ok: number }>(
     `SELECT 1 AS ok
-       FROM temp_users e
+       FROM ${TEMP_USER_SLICES} e
       WHERE e.id = $2
         AND ${scope}
       LIMIT 1`,

@@ -20,7 +20,7 @@ export function ManagerTeamRow({
   const { team } = useManagerPermissions();
   const checked = row.accounts.filter((account) => account.weekly_check).length;
   const allChecked = row.accounts.length > 0 && checked === row.accounts.length;
-  const panelId = `manager-accounts-${row.id}`;
+  const panelId = `manager-accounts-${row.id}-${row.country.replace(/\W+/g, "-")}`;
 
   function toggle() {
     setExpanded((prev) => !prev);

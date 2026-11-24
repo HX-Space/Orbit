@@ -91,7 +91,8 @@ export function ManagerHomeTable({ groups }: ManagerHomeTableProps) {
             ) : (
               rows.map((row) => (
                 <ManagerTeamRow
-                  key={row.id}
+                  // A shared employee can be listed once per country.
+                  key={`${row.id}-${row.country}`}
                   row={row}
                   holderOptions={holderOptions}
                   importHolders={importHolders}

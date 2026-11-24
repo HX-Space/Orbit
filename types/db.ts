@@ -76,6 +76,9 @@ export type TempSocialMediaAccount = {
 
   status: "active" | "archived" | "suspended";
   is_spare: boolean;
+  /** Shared employees: the project / country this account counts for (NULL = holder's). */
+  assigned_region?: string | null;
+  assigned_country?: string | null;
 
   created_at: string;
   updated_at: string;
