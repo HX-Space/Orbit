@@ -95,13 +95,15 @@ function BulkImportModalDialog({
         (!holder.country || allowed.has(holder.country))
     );
   }, [allowedCountries, holders]);
-  const initialHolderKey = initialHolderId
-    ? bulkImportHolderKey(initialHolderSource, initialHolderId)
+  // The first entry for this person (a row's own place comes first).
+  const initialHolder = initialHolderId
+    ? scopedHolders.find(
+        (holder) => holder.source === initialHolderSource && holder.id === initialHolderId
+      ) ?? null
+    : null;
+  const initialHolderKey = initialHolder
+    ? bulkImportHolderKey(initialHolder.source, initialHolder.id, initialHolder.country)
     : "";
-  const initialHolder =
-    scopedHolders.find(
-      (holder) => bulkImportHolderKey(holder.source, holder.id) === initialHolderKey
-    ) ?? null;
   const initialFields = fieldsFromHolder(initialHolder);
 
   const [step, setStep] = useState<"holder" | "upload" | "review">("holder");
@@ -123,7 +125,7 @@ function BulkImportModalDialog({
   const selectedHolder = useMemo(
     () =>
       scopedHolders.find(
-        (holder) => bulkImportHolderKey(holder.source, holder.id) === holderId
+        (holder) => bulkImportHolderKey(holder.source, holder.id, holder.country) === holderId
       ) ?? null,
     [holderId, scopedHolders]
   );
@@ -323,7 +325,7 @@ function BulkImportModalDialog({
               onHolderIdChange={(next) => {
                 setHolderId(next);
                 const holder = scopedHolders.find(
-                  (item) => bulkImportHolderKey(item.source, item.id) === next
+                  (item) => bulkImportHolderKey(item.source, item.id, item.country) === next
                 );
                 const fields = fieldsFromHolder(holder);
                 setCountry(fields.country);

@@ -83,8 +83,8 @@ export function BulkImportHolderStep({
           <option value="">Select an account holder</option>
           {holders.map((holder) => (
             <option
-              key={bulkImportHolderKey(holder.source, holder.id)}
-              value={bulkImportHolderKey(holder.source, holder.id)}
+              key={bulkImportHolderKey(holder.source, holder.id, holder.country)}
+              value={bulkImportHolderKey(holder.source, holder.id, holder.country)}
             >
               {holder.full_name}
               {holder.country ? ` — ${holder.country}` : ""}

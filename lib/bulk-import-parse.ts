@@ -490,11 +490,16 @@ export function sanitizeBulkImportRow(
   };
 }
 
+/**
+ * Holder option value. The country is part of it: a shared employee is listed
+ * once per country, and each entry must stay its own choice.
+ */
 export function bulkImportHolderKey(
   source: "temp" | "alphaa",
-  id: number
+  id: number,
+  country?: string | null
 ) {
-  return `${source}:${id}`;
+  return `${source}:${id}:${country?.trim() ?? ""}`;
 }
 
 export function parseBulkImportHolderKey(value: string): {
