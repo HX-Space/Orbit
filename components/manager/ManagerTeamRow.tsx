@@ -120,6 +120,7 @@ export function ManagerTeamRow({
               holderOptions={holderOptions}
               importHolders={importHolders}
               allowedCountries={allowedCountries}
+              region={row.region}
             />
           </td>
         </tr>

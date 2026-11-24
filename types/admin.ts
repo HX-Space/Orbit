@@ -1122,6 +1122,8 @@ export type EmployeeAccountsPanelProps = {
   holders: BulkImportHolderOption[];
   holderSource?: AdminEmployeeSource;
   onChanged?: () => void;
+  /** Shared employee's row: new accounts count for this place. */
+  place?: SharedPlace | null;
 };
 
 export type EmployeeAccountsTableProps = {

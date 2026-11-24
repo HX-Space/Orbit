@@ -16,8 +16,18 @@ export function ManagerAccountsPanel({
   holderOptions,
   importHolders,
   allowedCountries,
+  region,
 }: ManagerAccountsPanelProps) {
   const total = accounts.length;
+  // This row first, with this row's country: a shared employee's South Korea
+  // row imports into South Korea, not their home country.
+  const rowImportHolders = [
+    ...importHolders
+      .filter((holder) => holder.id === holderId)
+      .slice(0, 1)
+      .map((holder) => ({ ...holder, country, region: region ?? holder.region })),
+    ...importHolders.filter((holder) => holder.id !== holderId),
+  ];
   const { team } = useManagerPermissions();
 
   return (
@@ -31,7 +41,7 @@ export function ManagerAccountsPanel({
         <div className="flex flex-wrap items-center gap-2">
           {team.canUpdate ? (
             <ManagerBulkImportButton
-              holders={importHolders}
+              holders={rowImportHolders}
               allowedCountries={allowedCountries}
               initialHolderId={holderId}
             />
@@ -41,6 +51,7 @@ export function ManagerAccountsPanel({
               holderId={holderId}
               fullName={fullName}
               holderOptions={holderOptions}
+              place={region ? { region, country } : null}
             />
           ) : null}
         </div>

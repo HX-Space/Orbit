@@ -12,6 +12,7 @@ export function ManagerAddAccountButton({
   holderId,
   fullName,
   holderOptions,
+  place,
 }: ManagerAddAccountButtonProps) {
   const [open, setOpen] = useState(false);
 
@@ -40,7 +41,7 @@ export function ManagerAddAccountButton({
         initial={emptyAdminSocialAccountInput(fullName)}
         holderOptions={holderOptions}
         onClose={() => setOpen(false)}
-        save={(payload) => createManagerSocialAccount(holderId, payload)}
+        save={(payload) => createManagerSocialAccount(holderId, payload, place)}
       />
     </>
   );

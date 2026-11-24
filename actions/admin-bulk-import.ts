@@ -7,6 +7,7 @@ import { requirePagePermission } from "@/lib/admin-access";
 import { opScopeIncludes } from "@/lib/op-scope";
 import type { OpAccessScope } from "@/types/admin";
 import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
+import { extraPlaceFor } from "@/lib/shared-employees-data";
 import { pool, queryOne } from "@/lib/db";
 import { publicAdminMutationError } from "@/lib/admin-action-error";
 import {
@@ -203,36 +204,56 @@ async function importTempHolderAccounts(input: {
       ? currentRegion
       : setupRegionForCountry(input.country);
 
+  // A shared employee importing into one of their extra places: those accounts
+  // belong to that place only; their home and other places stay untouched.
+  const extra = await extraPlaceFor(input.holderId, { country: input.country });
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    // Keep existing target_* values — admin Targets tab is the source of truth.
-    await client.query(
-      `UPDATE temp_users
-          SET country = $2,
-              region = $3,
-              language = $4,
-              setup_needs_review = FALSE
-        WHERE id = $1`,
-      [
-        input.holderId,
-        input.country,
-        region,
-        input.language,
-      ]
-    );
+    if (!extra) {
+      // Keep existing target_* values — admin Targets tab is the source of truth.
+      await client.query(
+        `UPDATE temp_users
+            SET country = $2,
+                region = $3,
+                language = $4,
+                setup_needs_review = FALSE
+          WHERE id = $1`,
+        [
+          input.holderId,
+          input.country,
+          region,
+          input.language,
+        ]
+      );
+    }
 
-    await client.query(
-      `DELETE FROM temp_social_media_accounts WHERE user_id = $1`,
-      [input.holderId]
-    );
+    // Replace only this place's accounts (home = no assignment).
+    if (extra) {
+      await client.query(
+        `DELETE FROM temp_social_media_accounts
+          WHERE user_id = $1
+            AND LOWER(TRIM(assigned_region)) = LOWER($2)
+            AND LOWER(TRIM(assigned_country)) = LOWER($3)`,
+        [input.holderId, extra.region, extra.country]
+      );
+    } else {
+      await client.query(
+        `DELETE FROM temp_social_media_accounts
+          WHERE user_id = $1
+            AND assigned_region IS NULL
+            AND assigned_country IS NULL`,
+        [input.holderId]
+      );
+    }
 
     const values: unknown[] = [];
     const sqlRows: string[] = [];
     input.rows.forEach((row, idx) => {
-      const base = idx * 14;
+      const base = idx * 16;
       sqlRows.push(
-        `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, $${base + 11}, $${base + 12}, $${base + 13}, $${base + 14})`
+        `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, $${base + 11}, $${base + 12}, $${base + 13}, $${base + 14}, $${base + 15}, $${base + 16})`
       );
       const accountName =
         row.username.replace(/^@/, "") || row.accountHolder || "Pending";
@@ -250,7 +271,9 @@ async function importTempHolderAccounts(input: {
         row.accountPassword || null,
         row.emailPassword || null,
         row.mobileNumber || null,
-        row.status
+        row.status,
+        extra?.region ?? null,
+        extra?.country ?? null
       );
     });
 
@@ -258,7 +281,8 @@ async function importTempHolderAccounts(input: {
       `INSERT INTO temp_social_media_accounts
         (user_id, platform, account_name, account_handle, account_url,
          starting_followers, current_followers, category, username,
-         account_email, account_password, email_password, mobile_number, status)
+         account_email, account_password, email_password, mobile_number, status,
+         assigned_region, assigned_country)
        VALUES ${sqlRows.join(", ")}`,
       values
     );
@@ -324,9 +348,13 @@ async function importAlphaaHolderAccounts(input: {
       input.holderId,
       country,
     ]);
-    // Same replace-all behaviour as before, now on this holder's Orbit accounts only.
+    // Replace this holder's Main accounts; a shared employee's accounts in their
+    // other places (assigned there) stay.
     await client.query(
-      `DELETE FROM temp_social_media_accounts WHERE user_id = $1`,
+      `DELETE FROM temp_social_media_accounts
+        WHERE user_id = $1
+          AND assigned_region IS NULL
+          AND assigned_country IS NULL`,
       [input.holderId]
     );
 

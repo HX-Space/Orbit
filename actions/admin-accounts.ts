@@ -26,8 +26,10 @@ import type {
   AdminAccountMutationResult,
   AdminEmployeeSource,
   AdminSocialAccountInput,
+  SharedPlace,
 } from "@/types/admin";
 import type { AdminPermissionAction } from "@/types/permissions";
+import { extraPlaceFor } from "@/lib/shared-employees-data";
 
 /**
  * Adding or editing an account is an employee update (OPs may do it); deleting
@@ -77,7 +79,9 @@ function withAlphaaEmailPassword(
 export async function createAdminSocialAccount(
   userId: number,
   payload: AdminSocialAccountInput,
-  source: AdminEmployeeSource = "temp"
+  source: AdminEmployeeSource = "temp",
+  /** Shared employees: the place (row) the account is added from. */
+  place?: SharedPlace | null
 ): Promise<AdminAccountMutationResult> {
   try {
     const scope = await requireAdmin("canUpdate", source);
@@ -107,6 +111,8 @@ export async function createAdminSocialAccount(
       [userId]
     );
     if (!user) return { error: "Employee not found." };
+    // Added from a shared employee's extra place: it counts for that place.
+    const extra = place ? await extraPlaceFor(userId, place) : null;
 
     const accountName = data.username.replace(/^@/, "");
     await pool.query(
@@ -114,8 +120,8 @@ export async function createAdminSocialAccount(
         (user_id, platform, account_name, account_handle, account_url,
          starting_followers, current_followers, category, username,
          account_email, account_password, email_password, mobile_number, status,
-         account_scope)
-       VALUES ($1, $2, $3, $4, $5, 0, 0, $6, $7, $8, $9, $10, $11, $12, $13)`,
+         account_scope, assigned_region, assigned_country)
+       VALUES ($1, $2, $3, $4, $5, 0, 0, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
       [
         userId,
         data.platform,
@@ -130,6 +136,8 @@ export async function createAdminSocialAccount(
         data.mobileNumber,
         data.status ?? "active",
         data.accountScope,
+        extra?.region ?? null,
+        extra?.country ?? null,
       ]
     );
     revalidateAccounts(userId);

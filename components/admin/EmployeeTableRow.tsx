@@ -92,11 +92,15 @@ export function EmployeeTableRow({
     manager_name: row.manager_name,
     region: row.region,
   };
-  const importHolders = holders.some(
-    (holder) => holder.id === row.id && holder.source === row.source
-  )
-    ? holders
-    : [rowHolder, ...holders];
+  // This row first, with this row's country: a shared employee's South Korea
+  // row imports into South Korea, not their home country.
+  const importHolders = [
+    rowHolder,
+    ...holders.filter((holder) => !(holder.id === row.id && holder.source === row.source)),
+  ];
+  const rowPlace = row.place_key
+    ? { region: row.place_key.split("|")[0] ?? "", country: row.place_key.split("|")[1] ?? "" }
+    : null;
   const canImport = holdsAccounts;
 
   function toggle() {
@@ -280,6 +284,7 @@ export function EmployeeTableRow({
                 readOnly={false}
                 holders={importHolders}
                 holderSource={row.source}
+                place={rowPlace}
               />
             )}
           </td>

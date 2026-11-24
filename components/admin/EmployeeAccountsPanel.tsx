@@ -7,6 +7,7 @@ import { emptyAdminSocialAccountInput } from "@/lib/admin-account-input";
 import { AccountEditModal } from "@/components/admin/AccountEditModal";
 import { EmployeeAccountsTable } from "@/components/admin/EmployeeAccountsTable";
 import { EmployeesBulkImportButton } from "@/components/admin/EmployeesBulkImportButton";
+import { createAdminSocialAccount } from "@/actions/admin-accounts";
 import type { EmployeeAccountsPanelProps } from "@/types/admin";
 
 export function EmployeeAccountsPanel({
@@ -21,6 +22,7 @@ export function EmployeeAccountsPanel({
   holders,
   holderSource = "temp",
   onChanged,
+  place,
 }: EmployeeAccountsPanelProps) {
   const [addOpen, setAddOpen] = useState(false);
   const total = accounts.length;
@@ -88,6 +90,12 @@ export function EmployeeAccountsPanel({
         source={holderSource}
         onClose={() => setAddOpen(false)}
         onSaved={onChanged}
+        // A shared employee's row: the new account counts for that row's place.
+        save={
+          place
+            ? (payload) => createAdminSocialAccount(userId, payload, holderSource, place)
+            : undefined
+        }
       />
     </div>
   );

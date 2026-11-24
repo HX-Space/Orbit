@@ -74,6 +74,8 @@ export type ManagerAddAccountButtonProps = {
   holderId: number;
   fullName: string;
   holderOptions: AccountHolderOption[];
+  /** Shared employee's row: the new account counts for this place. */
+  place?: { region: string; country: string } | null;
 };
 
 export type ManagerCountryGroup = {
@@ -123,6 +125,8 @@ export type ManagerAccountsPanelProps = {
   holderOptions: AccountHolderOption[];
   importHolders: BulkImportHolderOption[];
   allowedCountries: string[];
+  /** The row's project (a shared employee has one row per place). */
+  region?: string | null;
 };
 
 export type ManagerAccountsTableProps = {

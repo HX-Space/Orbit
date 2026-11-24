@@ -20,7 +20,9 @@ import type {
   AdminAccountMutationResult,
   AdminEmployeeSource,
   AdminSocialAccountInput,
+  SharedPlace,
 } from "@/types/admin";
+import { extraPlaceFor } from "@/lib/shared-employees-data";
 
 function revalidateManagerAccounts(userId: number) {
   revalidatePath("/manager");
@@ -34,6 +36,8 @@ function revalidateManagerAccounts(userId: number) {
 export async function createManagerSocialAccount(
   userId: number,
   payload: AdminSocialAccountInput,
+  /** Shared employees: the place (row) the account is added from. */
+  place?: SharedPlace | null,
 ): Promise<AdminAccountMutationResult> {
   try {
     const managerId = await requireManagerPermission(
@@ -46,6 +50,8 @@ export async function createManagerSocialAccount(
     const checked = validateSocialAccountInput(payload);
     if ("error" in checked) return checked;
     const data = normalizeSocialAccountInput(checked.data);
+    // Added from a shared employee's extra place: it counts for that place.
+    const extra = place ? await extraPlaceFor(userId, place) : null;
 
     const accountName = data.username.replace(/^@/, "");
     await pool.query(
@@ -53,8 +59,8 @@ export async function createManagerSocialAccount(
         (user_id, platform, account_name, account_handle, account_url,
          starting_followers, current_followers, category, username,
          account_email, account_password, email_password, mobile_number, status,
-         account_scope)
-       VALUES ($1, $2, $3, $4, $5, 0, 0, $6, $7, $8, $9, $10, $11, $12, $13)`,
+         account_scope, assigned_region, assigned_country)
+       VALUES ($1, $2, $3, $4, $5, 0, 0, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
       [
         userId,
         data.platform,
@@ -69,6 +75,8 @@ export async function createManagerSocialAccount(
         data.mobileNumber,
         data.status ?? "active",
         data.accountScope,
+        extra?.region ?? null,
+        extra?.country ?? null,
       ],
     );
     revalidateManagerAccounts(userId);
