@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getAdminEmployeeAccounts } from "@/actions/admin";
-import { Loader2, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { ViewAsButton } from "@/components/admin/ViewAsButton";
 import { adminRoleBadge } from "@/lib/admin-view";
 import { EmployeeCountryCell } from "@/components/admin/EmployeeCountryCell";
 import { EmployeeProjectCell } from "@/components/admin/EmployeeProjectCell";
@@ -36,6 +37,7 @@ export function EmployeeTableRow({
   row,
   holders,
   canManagePermissions = false,
+  canViewAs = false,
 }: EmployeeTableRowProps) {
   const [expanded, setExpanded] = useState(false);
   const initial = (row.full_name.trim()[0] ?? "?").toUpperCase();
@@ -203,6 +205,7 @@ export function EmployeeTableRow({
               country={row.country}
               region={row.region}
             />
+            {canViewAs ? <ViewAsButton userId={row.id} name={row.full_name} /> : null}
             {canManagePermissions ? (
               <EmployeePermissionsButton
                 userId={row.id}
@@ -247,10 +250,6 @@ export function EmployeeTableRow({
                 aria-label={`Loading accounts for ${row.full_name}`}
                 className="flex flex-col gap-3 rounded-xl bg-[var(--color-surface)] p-4"
               >
-                <p className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--color-muted)]">
-                  <Loader2 className="h-4 w-4 animate-spin text-[var(--color-emerald)]" aria-hidden="true" />
-                  Loading accounts for {row.full_name}…
-                </p>
                 {[0, 1, 2].map((line) => (
                   <div
                     key={line}

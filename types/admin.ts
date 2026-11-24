@@ -317,8 +317,10 @@ export type AdminWorkspaceProps = {
 export type AdminOverviewHeadingActionsProps = {
   region: AdminRegion;
   canCreateEmployees?: boolean;
-  /** Spare / coverage rebalance from Overview. */
+  /** Spare / coverage rebalance from Overview (hidden for now). */
   canBalanceSpare?: boolean;
+  /** Sync accounts to Google Sheets from the Overview. */
+  canSyncSheets?: boolean;
 };
 
 export type AdminPageLoaderProps = {
@@ -536,11 +538,26 @@ export type AdminCountryCoverageTotals = Omit<
   "country" | "language" | "onPlan" | "holders"
 >;
 
+/** An employee with the On Hold status, and who they work with. */
+export type OnHoldEmployee = {
+  id: number;
+  name: string;
+  region: string;
+  project: string;
+  country: string;
+  countryManager: string | null;
+  operationManager: string | null;
+  platforms: { label: string; count: number }[];
+  totalAccounts: number;
+};
+
 /** A person holding more accounts on a platform than their planned slot. */
 export type ExtraAccountHolder = {
   id: number;
   source: "temp" | "alphaa";
   name: string;
+  /** temp_users.region (for scope checks); `project` is its display label. */
+  region: string;
   project: string;
   country: string;
   countryManager: string | null;
@@ -553,8 +570,6 @@ export type AdminCountryCoverage = {
   totals: AdminCountryCoverageTotals;
   /** Accounts the Google Sheets sync writes for this tab (same rule as the export). */
   sheetAccountCount?: number;
-  /** People with more accounts than their slot on a platform. */
-  extraHolders?: ExtraAccountHolder[];
   onHoldCount: number;
   /** Active Africa/Europe accounts marked spare (excluded from plan actuals). */
   spareCount: number;
@@ -577,6 +592,8 @@ export type AdminCountryCoverageFilter = {
 
 export type AdminCoverageKpisProps = {
   coverage: AdminCountryCoverage;
+  /** Admin Overview tab: makes On Hold open its details. */
+  region?: string;
 };
 
 export type AdminCountryCoverageSectionProps = {
@@ -819,6 +836,8 @@ export type EmployeeTableRowProps = {
   holders: BulkImportHolderOption[];
   /** Admin-only: show the page-permissions action. */
   canManagePermissions?: boolean;
+  /** Admin / HOD: show the read-only View as action. */
+  canViewAs?: boolean;
 };
 
 export type EmployeesTableProps = {
@@ -826,6 +845,7 @@ export type EmployeesTableProps = {
   holders: BulkImportHolderOption[];
   toolbar?: ReactNode;
   canManagePermissions?: boolean;
+  canViewAs?: boolean;
 };
 
 /** A project + country that has accounts (Employees filter dropdowns). */

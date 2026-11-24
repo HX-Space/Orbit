@@ -152,6 +152,7 @@ export default async function AdminEmployeesPage({
         rows={rows}
         holders={holders}
         canManagePermissions={viewer.role === "admin"}
+        canViewAs={viewer.role === "admin" || viewer.role === "hoo"}
         toolbar={
           <EmployeesTableToolbar
             initialQ={q}

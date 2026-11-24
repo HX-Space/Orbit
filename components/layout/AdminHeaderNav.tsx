@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { LayoutGroup } from "framer-motion";
 import { AdminHeaderNavItem } from "@/components/layout/AdminHeaderNavItem";
 import { AdminHeaderSpareButton } from "@/components/layout/AdminHeaderSpareButton";
+import { AdminHeaderExtraButton } from "@/components/layout/AdminHeaderExtraButton";
 import { ADMIN_NAV_PAGES } from "@/lib/admin-nav-pages";
 import type { AdminHeaderNavLink, AdminHeaderNavProps } from "@/types/layout";
 
@@ -28,6 +29,8 @@ export function AdminHeaderNav({
     })
   );
   const showSpare = allowed.has("spare");
+  // People with more accounts than their slot (needs the Overview page).
+  const showExtra = allowed.has("overview");
   const beforeSpare = links.filter(
     (link) =>
       link.href === "/admin" ||
@@ -57,6 +60,7 @@ export function AdminHeaderNav({
             holders={spareHolders}
           />
         ) : null}
+        {showExtra ? <AdminHeaderExtraButton /> : null}
         {afterSpare.map((link) => (
           <AdminHeaderNavItem
             key={link.href}

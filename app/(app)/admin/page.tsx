@@ -64,7 +64,7 @@ export default async function AdminOverviewPage({
         <AdminOverviewHeadingActions
           region={region}
           canCreateEmployees={viewerAllows(viewer, "employees", "canCreate")}
-          canBalanceSpare={viewerAllows(viewer, "spare", "canUpdate")}
+          canSyncSheets={viewerAllows(viewer, "overview", "canUpdate")}
         />
       }
     >
@@ -73,7 +73,7 @@ export default async function AdminOverviewPage({
         projects={projects}
         hideAllRegions={viewer.role === "op"}
       >
-        <AdminCoverageKpis coverage={coverage} />
+        <AdminCoverageKpis coverage={coverage} region={region} />
         <AdminCountryCoverageSection
           coverage={coverage}
           region={region}

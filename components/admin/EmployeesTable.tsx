@@ -11,6 +11,7 @@ export function EmployeesTable({
   holders,
   toolbar,
   canManagePermissions = false,
+  canViewAs = false,
 }: EmployeesTableProps) {
   // Draw 50 rows first, then 50 more each time the bottom comes into view.
   // The page keys this table by its filters, so new filters start from the top.
@@ -86,6 +87,7 @@ export function EmployeesTable({
                   row={row}
                   holders={holders}
                   canManagePermissions={canManagePermissions}
+                  canViewAs={canViewAs}
                 />
               ))
             )}

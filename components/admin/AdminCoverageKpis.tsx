@@ -1,13 +1,13 @@
 import { AdminKpiTile } from "@/components/admin/AdminKpiTile";
-import { ExtraAccountsKpi } from "@/components/admin/ExtraAccountsKpi";
+import { OnHoldKpi } from "@/components/admin/OnHoldKpi";
 import type { AdminCoverageKpisProps } from "@/types/admin";
 
 function remaining(actual: number, target: number) {
   return Math.max(0, target - actual);
 }
 
-export function AdminCoverageKpis({ coverage }: AdminCoverageKpisProps) {
-  const { totals, rows, onHoldCount, spareCount } = coverage;
+export function AdminCoverageKpis({ coverage, region }: AdminCoverageKpisProps) {
+  const { totals, rows, onHoldCount } = coverage;
   const countriesOnPlan = rows.filter((row) => row.onPlan).length;
   const countriesFilled = rows.filter(
     (row) =>
@@ -17,7 +17,7 @@ export function AdminCoverageKpis({ coverage }: AdminCoverageKpisProps) {
   ).length;
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 xl:grid-cols-7">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-5">
       <AdminKpiTile
         icon="users"
         title="Employees"
@@ -41,19 +41,17 @@ export function AdminCoverageKpis({ coverage }: AdminCoverageKpisProps) {
         value={String(remaining(totals.totalAccounts.actual, totals.totalAccounts.target))}
         subtitle="Account slots left on the plan"
       />
-      {coverage.extraHolders ? <ExtraAccountsKpi holders={coverage.extraHolders} /> : null}
-      <AdminKpiTile
-        icon="spare"
-        title="Spare"
-        value={String(spareCount)}
-        subtitle="Extra accounts marked spare"
-      />
-      <AdminKpiTile
-        icon="pause"
-        title="On Hold"
-        value={String(onHoldCount)}
-        subtitle="Users with On Hold status"
-      />
+      {/* Spare lives in the navbar. On Hold opens who is on hold (admin Overview). */}
+      {region ? (
+        <OnHoldKpi count={onHoldCount} region={region} />
+      ) : (
+        <AdminKpiTile
+          icon="pause"
+          title="On Hold"
+          value={String(onHoldCount)}
+          subtitle="Users with On Hold status"
+        />
+      )}
       <AdminKpiTile
         icon="globe"
         title="Countries ready"

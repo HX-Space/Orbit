@@ -93,7 +93,7 @@ const CORE_PLATFORMS: [keyof AdminCountryCoverageRow, string][] = [
 export async function extraAccountHolders(
   rows: AdminCountryCoverageRow[]
 ): Promise<ExtraAccountHolder[]> {
-  const found: Omit<ExtraAccountHolder, "project" | "countryManager">[] = [];
+  const found: Omit<ExtraAccountHolder, "region" | "project" | "countryManager">[] = [];
   for (const row of rows) {
     for (const holder of row.holders) {
       if (holder.vacant || holder.id == null) continue;
@@ -153,9 +153,11 @@ export async function extraAccountHolders(
   return found
     .map((item) => {
       const person = byId.get(item.id);
+      const region = person?.region?.trim() ?? "";
       return {
         ...item,
-        project: regionDisplayLabel(person?.region?.trim() ?? "") || "—",
+        region,
+        project: regionDisplayLabel(region) || "—",
         countryManager: person?.cm ?? null,
       };
     })
