@@ -3,6 +3,7 @@ import { query } from "@/lib/db";
 import { ALPHAA_REGION_WHERE } from "@/lib/alphaa-platform-sql";
 import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
 import { splitAccountsBySheetsTab } from "@/lib/sheets-export-region";
+import { sheetCountryName } from "@/lib/sheets-country-config";
 import type { Platform } from "@/lib/platform-config";
 import type { AccountScope } from "@/types/db";
 import type { SheetsExportAccountRow } from "@/types/admin";
@@ -106,9 +107,31 @@ export async function fetchAccountsForSheetsExport(): Promise<{
   ]);
   const tabs = splitAccountsBySheetsTab(rows, projects);
   return {
-    Africa: tabs.Africa.map(mapSheetsExportRow),
-    Europe: tabs.Europe.map(mapSheetsExportRow),
-    Asia: tabs.Asia.map(mapSheetsExportRow),
+    Africa: groupInternalCountries(tabs.Africa).map(mapSheetsExportRow),
+    Europe: groupInternalCountries(tabs.Europe).map(mapSheetsExportRow),
+    Asia: groupInternalCountries(tabs.Asia).map(mapSheetsExportRow),
     skipped: tabs.skipped.length,
   };
+}
+
+/**
+ * The sheet shows Orbit's internal "Moldova 2" as Moldova (sheetCountryName),
+ * so its rows go right after Moldova's; every other row keeps its order.
+ */
+function groupInternalCountries<T extends { country: string | null }>(rows: T[]): T[] {
+  const sheetName = (row: T) => sheetCountryName(row.country?.trim() ?? "");
+  const moved = rows.filter((row) => sheetName(row) !== (row.country?.trim() ?? ""));
+  if (moved.length === 0) return rows;
+  const out = rows.filter((row) => !moved.includes(row));
+  for (const row of moved) {
+    const name = sheetName(row);
+    let at = -1;
+    out.forEach((item, index) => {
+      if (sheetName(item) === name) at = index;
+    });
+    // After the real country's last row (or where it sorts, if it has none).
+    if (at < 0) at = out.findIndex((item) => sheetName(item).localeCompare(name) > 0) - 1;
+    out.splice(at < -1 ? out.length : at + 1, 0, row);
+  }
+  return out;
 }

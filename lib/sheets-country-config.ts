@@ -65,6 +65,11 @@ export const COUNTRY_SHEET_NAME: Partial<
 > = {
   // Legacy DB value → sheet / canonical app label
   // (kept empty once migration renames Burkina Faso → Borkina)
+  // Orbit-internal "2" countries (kept apart after the Africa 2 / Europe 2
+  // merge) go to the client sheet as the one real country.
+  "Moldova 2": "Moldova",
+  "Slovakia 2": "Slovakia",
+  "Sudan 2": "Sudan",
 };
 
 export function sheetCountryName(country: string | null | undefined) {
