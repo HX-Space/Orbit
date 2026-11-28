@@ -9,6 +9,7 @@ import ExcelJS from "exceljs";
 import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
 import { projectRegionValue } from "@/lib/employee-create-projects";
 import { sheetsTabForProject } from "@/lib/sheets-export-region";
+import { sheetCountryName } from "@/lib/sheets-country-config";
 import { fetchStrategyProjects } from "@/lib/strategy-projects-data";
 import type {
   StrategyAccountScope,
@@ -114,17 +115,30 @@ export async function fetchStrategyTemplateRows(
     const projectLabel = tab === "Main" ? "Main" : project.name.trim();
     const countries = [...project.subProjects].sort((a, b) => a.name.localeCompare(b.name));
     for (const country of countries) {
-      byTab[tab].push({
+      const row: TemplateRow = {
         // Main countries carry their geographic region (e.g. Gulf); others their project.
         region:
           tab === "Main"
             ? country.region?.trim() || project.region?.trim() || projectLabel
             : projectLabel,
-        country: country.name.trim(),
+        // Orbit-internal "Moldova 2" is the client's Moldova: one row per country.
+        country: sheetCountryName(country.name.trim()),
         language: country.language?.trim() || project.language?.trim() || "",
         resources: Number(country.resources) || 0,
         counts: countsByColumn(country.projectTargets ?? {}),
-      });
+      };
+      const same = byTab[tab].find(
+        (item) => item.region === row.region && item.country === row.country
+      );
+      if (!same) {
+        byTab[tab].push(row);
+        continue;
+      }
+      same.resources += row.resources;
+      same.language ||= row.language;
+      for (const [column, value] of row.counts) {
+        same.counts.set(column, (same.counts.get(column) ?? 0) + value);
+      }
     }
   }
   return byTab;

@@ -146,6 +146,8 @@ export const SETUP_LANGUAGES = [
   "Azerbaijani",
   "Armenian",
   "Georgian",
+  // Latin America (US project: Cuba, Guatemala, Peru, Chile, …).
+  "Spanish",
 ] as const;
 
 export function isSetupCountry(value: string) {
