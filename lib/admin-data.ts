@@ -33,7 +33,7 @@ import {
 } from "@/lib/admin-employee-reporting";
 import { fetchEmployeeCreateProjectOptions } from "@/lib/employee-create-projects-data";
 import { fetchManagerOptions } from "@/lib/manager-data";
-import { mapEmployeeListCountries } from "@/lib/overview-country-display";
+import { baseCountryFromDisplay, mapEmployeeListCountries } from "@/lib/overview-country-display";
 import { regionDisplayLabel } from "@/lib/project-labels";
 import { setupCountriesForRegion } from "@/lib/setup-options";
 import type { TempUser } from "@/types/db";
@@ -458,7 +458,14 @@ async function expandSharedEmployeeRows(
     }
     const home = options.find((option) => option.isHome) ?? options[0]!;
     for (const place of options) {
-      if (!regionMatches(place.region) || !countryMatches(place.country)) continue;
+      // Home place of an Operation Manager / Country Manager: the role's own
+      // countries (e.g. all 12 Asia countries), not just the home country.
+      const roleCountries =
+        place.isHome && (row.role === "op" || row.role === "manager") && row.countries.length > 0;
+      const placeCountryMatches = roleCountries
+        ? row.countries.some((label) => countryMatches(baseCountryFromDisplay(label)))
+        : countryMatches(place.country);
+      if (!regionMatches(place.region) || !placeCountryMatches) continue;
       const mine = accounts.filter(
         (account) =>
           account.user_id === row.id &&
@@ -474,9 +481,10 @@ async function expandSharedEmployeeRows(
       out.push({
         ...row,
         region: place.region,
-        project: regionDisplayLabel(place.region) || row.project,
-        country: countries[0] ?? place.country,
-        countries,
+        project: roleCountries ? row.project : regionDisplayLabel(place.region) || row.project,
+        ...(roleCountries
+          ? {}
+          : { country: countries[0] ?? place.country, countries, countryGroups: undefined }),
         place_key: place.key,
         account_count: mine.length,
         plan_account_count: mine.filter((account) => !account.is_spare).length,
