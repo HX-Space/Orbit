@@ -124,6 +124,7 @@ export function BulkImportReviewTable({
                   fieldErrors={rowFieldErrors[row.id]}
                   onChange={(patch) => onRowChange(row.id, patch)}
                   onRemove={() => onRemoveRow(row.id)}
+                  allowMainPlatforms={region === "Alphaa"}
                 />
               ))
             )}

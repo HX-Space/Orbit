@@ -1309,7 +1309,8 @@ export type EmployeeAccountsFetch = {
 
 export type BulkImportAccountDraft = {
   id: string;
-  platform: Platform | "";
+  /** Core platform, or a Main-only one (YouTube, Threads, …) for Main holders. */
+  platform: Platform | AlphaaExtraPlatformKey | "";
   accountHolder: string;
   url: string;
   category: string;
@@ -1388,6 +1389,8 @@ export type BulkImportReviewRowProps = {
   strict?: boolean;
   onChange: (patch: Partial<BulkImportAccountDraft>) => void;
   onRemove: () => void;
+  /** Main holder: offer the Main-only platforms (YouTube, Threads, …). */
+  allowMainPlatforms?: boolean;
 };
 
 export type SheetsExportAccountRow = {

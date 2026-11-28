@@ -12,6 +12,7 @@ import { pool, queryOne } from "@/lib/db";
 import { publicAdminMutationError } from "@/lib/admin-action-error";
 import {
   bulkImportBlockingIssues,
+  isMainOnlyPlatform,
   parseAfricaTemplateSheet,
   sanitizeBulkImportRow,
 } from "@/lib/bulk-import-parse";
@@ -193,6 +194,13 @@ async function importTempHolderAccounts(input: {
     [input.holderId]
   );
   if (!employee) return { error: "Account holder not found." };
+  // YouTube, Threads, … are Main platforms only.
+  const mainOnly = input.rows.find((row) => isMainOnlyPlatform(row.platform));
+  if (mainOnly && employee.region?.trim() !== "Alphaa") {
+    return {
+      error: `${extractPlatformLabel(mainOnly.platform)} accounts are only for Main project holders. Change or remove those rows.`,
+    };
+  }
 
   // Keep the holder's project when the country is in it. Sudan / Somalia (Africa +
   // Main) and Palestine (Main + Asia) would otherwise be re-guessed and move them.

@@ -83,14 +83,54 @@ for (const [name, iso] of Object.entries(COUNTRY_ISO)) {
   if (flag) FLAG_BY_COUNTRY[name] = flag;
 }
 
+/**
+ * Any other country (e.g. ones added in Strategy, like Peru or El Salvador):
+ * English country name → ISO code, from the built-in Intl region names.
+ */
+const ISO_BY_ENGLISH_NAME: Record<string, string> = (() => {
+  const byName: Record<string, string> = {};
+  try {
+    const names = new Intl.DisplayNames(["en"], { type: "region" });
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    for (const a of letters) {
+      for (const b of letters) {
+        const code = `${a}${b}`;
+        const name = names.of(code);
+        if (name && name !== code && FLAGS_BY_ISO[code]) byName[name.toLowerCase()] = code;
+      }
+    }
+  } catch {
+    // No Intl region names: only the fixed list above has flags.
+  }
+  // Common short names that differ from the official English name.
+  Object.assign(byName, {
+    usa: "US",
+    "united states of america": "US",
+    us: "US",
+    uk: "GB",
+    "north korea": "KP",
+    "south korea": "KR",
+    "ivory coast": "CI",
+    "czech republic": "CZ",
+    russia: "RU",
+    "bosnia and herzegovina": "BA",
+  });
+  return byName;
+})();
+
+function isoForCountry(country: string): string | null {
+  const base = baseCountryFromDisplay(country).trim();
+  return COUNTRY_ISO[base] ?? ISO_BY_ENGLISH_NAME[base.toLowerCase()] ?? null;
+}
+
 export function countryIsoCode(country: string): string | null {
-  const base = baseCountryFromDisplay(country);
-  return COUNTRY_ISO[base] ?? null;
+  return isoForCountry(country);
 }
 
 export function CountryFlag({ country, title, className }: CountryFlagProps) {
   const flagCountry = baseCountryFromDisplay(country);
-  const flag = FLAG_BY_COUNTRY[flagCountry];
+  const iso = FLAG_BY_COUNTRY[flagCountry] ? null : isoForCountry(flagCountry);
+  const flag = FLAG_BY_COUNTRY[flagCountry] ?? (iso ? FLAGS_BY_ISO[iso] : undefined);
   if (!flag) {
     return (
       <span

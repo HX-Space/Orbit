@@ -100,7 +100,12 @@ const setupAccountFieldsBaseSchema = z.object({
   mobileNumber: z.string().trim().min(1, "Add a mobile number."),
 });
 
-export function setupAccountFieldsSchemaFor(platform: Platform) {
+/**
+ * `platform` may also be a Main-only platform (YouTube, Threads, …): those
+ * have no fixed site list, so only a valid http(s) link is required.
+ */
+export function setupAccountFieldsSchemaFor(platform: Platform | string) {
+  const known = (Object.keys(PLATFORM_URL_HOST_SUFFIXES) as string[]).includes(platform);
   return setupAccountFieldsBaseSchema.superRefine((data, ctx) => {
     const url = data.url.trim();
     if (!url) return;
@@ -114,11 +119,11 @@ export function setupAccountFieldsSchemaFor(platform: Platform) {
       return;
     }
 
-    if (!isPlatformAccountUrl(platform, url)) {
+    if (known && !isPlatformAccountUrl(platform as Platform, url)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["url"],
-        message: platformUrlErrorMessage(platform),
+        message: platformUrlErrorMessage(platform as Platform),
       });
     }
   });

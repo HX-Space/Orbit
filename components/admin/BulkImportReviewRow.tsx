@@ -4,7 +4,15 @@ import { motion } from "framer-motion";
 import { Trash2 } from "lucide-react";
 import { SETUP_CATEGORIES } from "@/lib/setup-options";
 import { PLATFORMS, PLATFORM_LABELS } from "@/lib/platform-config";
-import { bulkImportRowIssues, bulkImportRowFieldErrors } from "@/lib/bulk-import-parse";
+import {
+  bulkImportRowIssues,
+  bulkImportRowFieldErrors,
+  isMainOnlyPlatform,
+} from "@/lib/bulk-import-parse";
+import {
+  ALPHAA_EXTRA_PLATFORM_KEYS,
+  ALPHAA_EXTRA_PLATFORM_LABELS,
+} from "@/lib/alphaa-coverage-platforms";
 import type { BulkImportReviewRowProps } from "@/types/admin";
 
 const fieldClass =
@@ -25,6 +33,7 @@ export function BulkImportReviewRow({
   strict = false,
   onChange,
   onRemove,
+  allowMainPlatforms = false,
 }: BulkImportReviewRowProps) {
   const fieldErrors =
     fieldErrorsProp ??
@@ -54,6 +63,14 @@ export function BulkImportReviewRow({
                 {PLATFORM_LABELS[platform]}
               </option>
             ))}
+            {/* Main holders can also have YouTube, Threads, … */}
+            {allowMainPlatforms || isMainOnlyPlatform(row.platform)
+              ? ALPHAA_EXTRA_PLATFORM_KEYS.map((platform) => (
+                  <option key={platform} value={platform}>
+                    {ALPHAA_EXTRA_PLATFORM_LABELS[platform]}
+                  </option>
+                ))
+              : null}
           </select>
         </td>
         <td className="px-3 py-2">

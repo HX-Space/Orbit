@@ -9,7 +9,45 @@ import {
   platformUrlErrorMessage,
   setupAccountFieldsSchemaFor,
 } from "@/lib/setup-schema";
-import type { BulkImportAccountDraft, BulkImportParseResult } from "@/types/admin";
+import type {
+  AlphaaExtraPlatformKey,
+  BulkImportAccountDraft,
+  BulkImportParseResult,
+} from "@/types/admin";
+import { ALPHAA_EXTRA_PLATFORM_KEYS } from "@/lib/alphaa-coverage-platforms";
+
+/** Main-only platforms (YouTube, Threads, …): only Main holders may have them. */
+export function isMainOnlyPlatform(value: string): value is AlphaaExtraPlatformKey {
+  return (ALPHAA_EXTRA_PLATFORM_KEYS as string[]).includes(value);
+}
+
+const MAIN_PLATFORM_ALIASES: [AlphaaExtraPlatformKey, string[]][] = [
+  ["youtube", ["youtube", "yt"]],
+  ["threads", ["threads"]],
+  ["reddit", ["reddit"]],
+  ["blogspot", ["blogspot", "blogger"]],
+  ["telegram", ["telegram"]],
+  ["website", ["website", "site"]],
+  ["pinterest", ["pinterest"]],
+  ["turkkitap", ["1000kitap", "turkkitap"]],
+  ["kizlarsoruyor", ["kizlarsoruyor", "kızlarsoruyor"]],
+  ["balatarin", ["balatarin"]],
+];
+
+/** One of the five core platforms (their links are checked against the site). */
+function isCorePlatform(value: string): value is Platform {
+  return (PLATFORMS as string[]).includes(value);
+}
+
+/** "YouTube-Personal", "you tube", "Threads" → the Main platform key. */
+function mainPlatformFromText(platformRaw: string): AlphaaExtraPlatformKey | null {
+  const compact = platformRaw.trim().toLowerCase().replace(/[^a-z0-9ı]+/g, "");
+  if (!compact) return null;
+  for (const [key, aliases] of MAIN_PLATFORM_ALIASES) {
+    if (aliases.some((alias) => compact === alias || compact.startsWith(alias))) return key;
+  }
+  return null;
+}
 
 export type BulkImportRowFieldErrors = Partial<
   Record<
@@ -96,7 +134,10 @@ function parsePlatform(
   platformRaw: string,
   personalRaw: string,
   umbrellaRaw: string
-): Platform | "" {
+): Platform | AlphaaExtraPlatformKey | "" {
+  // Main platforms first: "YouTube-Personal" must not become Facebook Personal.
+  const main = mainPlatformFromText(platformRaw);
+  if (main) return main;
   const platform = platformRaw.trim().toLowerCase();
   const personal = parseColumnFlag(personalRaw, "personal");
   const umbrella = parseColumnFlag(umbrellaRaw, "umbrella");
@@ -298,7 +339,10 @@ export function bulkImportRowFieldErrors(
   row: BulkImportAccountDraft
 ): BulkImportRowFieldErrors {
   const errors: BulkImportRowFieldErrors = {};
-  if (!row.platform || !PLATFORMS.includes(row.platform)) {
+  if (
+    !row.platform ||
+    !(PLATFORMS.includes(row.platform as Platform) || isMainOnlyPlatform(row.platform))
+  ) {
     errors.platform = "Select a platform.";
     return errors;
   }
@@ -350,9 +394,9 @@ export function getBulkImportStrictValidation(
     if (
       url &&
       isValidAccountUrl(url) &&
-      isPlatformAccountUrl(row.platform, url)
+      (!isCorePlatform(row.platform) || isPlatformAccountUrl(row.platform, url))
     ) {
-      const key = accountUrlKey(row.platform, url);
+      const key = accountUrlKey(row.platform as Platform, url);
       const firstRowId = seenUrls.get(key);
       if (firstRowId) {
         fieldErrors.url = "Same URL used twice.";
@@ -404,7 +448,7 @@ export function bulkImportRowIssues(
   row: BulkImportAccountDraft
 ): BulkImportRowFieldErrors {
   const issues: BulkImportRowFieldErrors = {};
-  if (!row.platform || !PLATFORMS.includes(row.platform)) {
+  if (!row.platform || !(isCorePlatform(row.platform) || isMainOnlyPlatform(row.platform))) {
     issues.platform = "Select a platform or remove this row.";
   }
   if (row.url.trim()) {
@@ -412,7 +456,7 @@ export function bulkImportRowIssues(
       issues.url = "URL is invalid. Fix it or clear it.";
     } else if (
       row.platform &&
-      PLATFORMS.includes(row.platform) &&
+      isCorePlatform(row.platform) &&
       !isPlatformAccountUrl(row.platform, row.url)
     ) {
       issues.url = `${platformUrlErrorMessage(row.platform)} Fix it or clear it.`;
@@ -441,7 +485,7 @@ export function bulkImportBlockingIssues(
     const issues = bulkImportRowIssues(row);
     const url = row.url.trim();
     if (url && row.platform && !issues.url && !issues.platform) {
-      const key = accountUrlKey(row.platform, url);
+      const key = accountUrlKey(row.platform as Platform, url);
       const firstId = seenUrls.get(key);
       if (firstId) {
         issues.url = "Same URL used twice.";
@@ -462,12 +506,14 @@ export function sanitizeBulkImportRow(
   holderName: string
 ): BulkImportAccountDraft {
   const platform =
-    row.platform && PLATFORMS.includes(row.platform) ? row.platform : "";
+    row.platform && (isCorePlatform(row.platform) || isMainOnlyPlatform(row.platform))
+      ? row.platform
+      : "";
   let url = row.url.trim();
   if (
     url &&
     (!isValidAccountUrl(url) ||
-      (platform && !isPlatformAccountUrl(platform, url)))
+      (platform && isCorePlatform(platform) && !isPlatformAccountUrl(platform, url)))
   ) {
     url = "";
   }
@@ -537,7 +583,7 @@ export function countBulkImportTargets(rows: BulkImportAccountDraft[]) {
     tiktok: 0,
   };
   for (const row of rows) {
-    if (row.platform && PLATFORMS.includes(row.platform)) {
+    if (row.platform && isCorePlatform(row.platform)) {
       counts[row.platform] += 1;
     }
   }
