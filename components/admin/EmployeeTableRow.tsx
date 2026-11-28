@@ -23,11 +23,12 @@ import type {
 } from "@/types/admin";
 
 function teamLeadColumnName(row: EmployeeTableRowProps["row"]): string | null {
-  if (row.role === "manager") return row.op_name;
+  const role = row.place_role ?? row.role;
+  if (role === "manager") return row.op_name;
   // Team Leader → the Country Manager they report to.
-  if (row.role === "team_lead") return row.manager_name;
+  if (role === "team_lead") return row.manager_name;
   // Employee → their saved Team Leader; no Team Leader → their Country Manager.
-  if (row.role === "employee") {
+  if (role === "employee") {
     return row.team_lead_id ? row.team_lead_name : row.manager_name;
   }
   return null;
@@ -43,7 +44,9 @@ export function EmployeeTableRow({
   const initial = (row.full_name.trim()[0] ?? "?").toUpperCase();
   const isAlphaa = row.source === "alphaa";
   // Employees and Team Leaders hold accounts.
-  const holdsAccounts = row.role === "employee" || row.role === "team_lead";
+  // A shared person's extra place is an Employee place.
+  const shownRole = row.place_role ?? row.role;
+  const holdsAccounts = shownRole === "employee" || shownRole === "team_lead";
   const canExpand = holdsAccounts || row.account_count > 0;
   const panelId = `employee-accounts-${row.source}-${row.id}${
     row.place_key ? `-${row.place_key.replace(/\W+/g, "-")}` : ""
@@ -180,7 +183,7 @@ export function EmployeeTableRow({
           <EmployeeCountryCell countries={row.countries} groups={row.countryGroups} />
         </td>
         <td className="px-4 py-3 text-[14px] text-[var(--color-ink)]">
-          {adminRoleBadge(row.role)}
+          {adminRoleBadge(shownRole)}
         </td>
         <td className="px-4 py-3 text-[14px] text-[var(--color-ink)]">
           {teamLeadName ?? "—"}

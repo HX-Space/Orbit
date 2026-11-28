@@ -36,6 +36,8 @@ export type AdminEmployeeListRow = {
   source: "temp" | "alphaa";
   /** Shared employees: the place this row is for (one row per place). */
   place_key?: string;
+  /** Shared employees: role shown for this place (extra places are Employee). */
+  place_role?: "employee";
   full_name: string;
   email: string;
   role: Role;

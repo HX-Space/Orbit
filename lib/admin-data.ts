@@ -486,6 +486,8 @@ async function expandSharedEmployeeRows(
           ? {}
           : { country: countries[0] ?? place.country, countries, countryGroups: undefined }),
         place_key: place.key,
+        // Shared into another place = Employee there, whatever the home role is.
+        place_role: place.isHome || row.role === "employee" ? undefined : "employee",
         account_count: mine.length,
         plan_account_count: mine.filter((account) => !account.is_spare).length,
       });
