@@ -117,7 +117,12 @@ export async function fetchAdminEmployeesList(
     role === "admin"
   ) {
     params.push(role);
-    where.push(`u.role = $${params.length}`);
+    // Shared people are Employees in their extra places (rows filtered again below).
+    where.push(
+      role === "employee"
+        ? `(u.role = $${params.length} OR u.is_shared = TRUE)`
+        : `u.role = $${params.length}`
+    );
   }
   if (region === "Africa" || region === "Europe" || region === "Asia") {
     const regionAliases =
@@ -406,7 +411,10 @@ export async function fetchAdminEmployeesList(
     };
   });
 
-  const expanded = await expandSharedEmployeeRows(tempRows, { region, country });
+  const expanded = (await expandSharedEmployeeRows(tempRows, { region, country })).filter(
+    // Role filter by the role each row shows (a shared place is Employee).
+    (row) => role === "all" || !row.is_shared || (row.place_role ?? row.role) === role
+  );
   return [...expanded, ...alphaaRows].sort(
     (a, b) => a.full_name.localeCompare(b.full_name) || a.id - b.id
   );
