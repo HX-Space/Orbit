@@ -275,7 +275,9 @@ export function EmployeeForm({
     // Main project = first picked; older single-project fields follow it.
     const opMain = opSaved[0] ?? null;
 
-    const canEditShared = !isAlphaa && canChangeProject && form.role === "employee";
+    // Employees, or anyone already shared (e.g. an Operation Manager who is an Employee elsewhere).
+    const canEditShared =
+      !isAlphaa && canChangeProject && (form.role === "employee" || base.is_shared);
     const sharedPlaces = form.extra_places.filter((place) => place.region && place.country);
     const sharedChanged =
       canEditShared &&
@@ -551,7 +553,7 @@ export function EmployeeForm({
           />
         </label>
 
-        {!isAlphaa && canChangeProject && form.role === "employee" ? (
+        {!isAlphaa && canChangeProject && (form.role === "employee" || base.is_shared) ? (
           <SharedEmployeeFields
             isShared={form.is_shared}
             places={form.extra_places}

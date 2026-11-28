@@ -28,7 +28,7 @@ export async function updateEmployeeSharedPlaces(
   if (!Number.isFinite(userId)) throw new Error("Invalid employee.");
 
   const user = await queryOne<{ region: string | null; country: string | null }>(
-    `SELECT region, country FROM temp_users WHERE id = $1 AND role = 'employee'`,
+    `SELECT region, country FROM temp_users WHERE id = $1 AND (role = 'employee' OR is_shared = TRUE)`,
     [userId]
   );
   if (!user) throw new Error("Only employees can be shared.");
